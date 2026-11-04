@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -8,29 +9,42 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { supabase } from '../services/supabase'; // Sesuaikan path jika file supabase.ts berbeda letaknya
 
-// 1. Interface props sudah benar
 interface LoginScreenProps {
   onPressRegister?: () => void;
   onPressBack?: () => void;
   onLoginSuccess?: () => void; 
 }
 
-// 2. TERAPKAN onLoginSuccess PADA PARAMETER KOMPONEN
 export default function LoginScreen({ onPressRegister, onPressBack, onLoginSuccess }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    console.log('Email:', email);
-    console.log('Password:', password);
-    
-    // 3. Panggil fungsi ini agar berpindah ke halaman Dashboard/Home
-    if (onLoginSuccess) {
-      onLoginSuccess();
+  // Hubungkan ke Supabase Auth
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Peringatan', 'Email dan kata sandi tidak boleh kosong!');
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: password,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      Alert.alert('Gagal Masuk', error.message);
     } else {
-      alert('Tombol Login diklik!');
+      Alert.alert('Berhasil', 'Selamat datang kembali!');
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      }
     }
   };
 
@@ -83,14 +97,19 @@ export default function LoginScreen({ onPressRegister, onPressBack, onLoginSucce
             <Text style={styles.forgotText}>Lupa Kata Sandi?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Masuk</Text>
+          <TouchableOpacity 
+            style={[styles.loginButton, loading && { opacity: 0.7 }]} 
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            <Text style={styles.loginButtonText}>
+              {loading ? 'Memproses...' : 'Masuk'}
+            </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.footerContainer}>
           <Text style={styles.footerText}>Belum punya akun? </Text>
-          {/* Hubungkan ke props onPressRegister */}
           <TouchableOpacity onPress={onPressRegister}>
             <Text style={styles.registerText}>Daftar Sekarang</Text>
           </TouchableOpacity>

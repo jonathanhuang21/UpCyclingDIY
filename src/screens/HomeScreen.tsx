@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   Image,
   SafeAreaView,
@@ -5,10 +6,33 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  Alert
 } from 'react-native';
+import { supabase } from '../services/supabase'; // Pastikan path import supabase sudah benar
 
 export default function HomeScreen() {
+  // Fungsi untuk menangani proses logout
+  const handleLogout = async () => {
+    Alert.alert(
+      "Konfirmasi Keluar",
+      "Apakah Anda yakin ingin keluar dari akun?",
+      [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Keluar",
+          style: "destructive",
+          onPress: async () => {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+              Alert.alert("Gagal Keluar", error.message);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // Data dummy untuk kategori sampah dengan gambar lokal
   const categories = [
     { id: '1', title: 'Kardus', image: require('../../assets/images/frame1/kardus.png') },
@@ -72,8 +96,15 @@ export default function HomeScreen() {
             <View style={styles.badgeContainer}>
               <Text style={styles.badgeText}>⭐ 100 XP</Text>
             </View>
+            
+            {/* Tombol Notifikasi */}
             <TouchableOpacity style={styles.notifButton}>
               <Text style={styles.notifIcon}>🔔</Text>
+            </TouchableOpacity>
+
+            {/* Tombol Logout Baru di Samping Lonceng */}
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Text style={styles.logoutIcon}>🚪</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -128,7 +159,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ScrollView Horizontal (Sudah Diperbaiki) */}
+        {/* ScrollView Horizontal */}
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false} 
@@ -254,6 +285,16 @@ const styles = StyleSheet.create({
   notifIcon: {
     fontSize: 20,
   },
+  // Style tambahan untuk tombol logout di samping lonceng
+  logoutButton: {
+    padding: 6,
+    marginLeft: 2,
+    backgroundColor: '#FFEBEE',
+    borderRadius: 15,
+  },
+  logoutIcon: {
+    fontSize: 18,
+  },
   bannerContainer: {
     backgroundColor: '#1B5E20',
     borderRadius: 20,
@@ -343,7 +384,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   horizontalScrollContent: {
-    paddingRight: 16, // Agar card terakhir tidak menempel ke tepi layar kanan
+    paddingRight: 16,
   },
   inspirationCard: {
     backgroundColor: '#FFF',

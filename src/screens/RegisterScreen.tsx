@@ -9,15 +9,14 @@ import {
   View,
   Alert
 } from 'react-native';
+import { supabase } from '../services/supabase'; // Sesuaikan path foldernya jika berbeda
 
-// 1. TAMBAHKAN onRegisterSuccess DI SINI
 interface RegisterScreenProps {
   onPressLogin?: () => void;
   onPressBack?: () => void;
-  onRegisterSuccess?: () => void; // <-- Tambahkan baris ini
+  onRegisterSuccess?: () => void;
 }
 
-// 2. TERAPKAN PADA PARAMETER KOMPONEN
 export default function RegisterScreen({ onPressLogin, onPressBack, onRegisterSuccess }: RegisterScreenProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -26,30 +25,69 @@ export default function RegisterScreen({ onPressLogin, onPressBack, onRegisterSu
   
   const [securePassword, setSecurePassword] = useState(true);
   const [secureConfirm, setSecureConfirm] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = () => {
-    if (!name || !email || !password) {
+  const handleRegister = async () => {
+    if (!name || !email || !password || !confirmPassword) {
       Alert.alert("Peringatan", "Semua kolom harus diisi!");
       return;
     }
 
-    console.log('Register:', { name, email, password });
-    
-    // Tampilkan pop-up sukses lalu pindah ke Home/Dashboard
-    Alert.alert(
-      "Berhasil!",
-      "Akun Anda berhasil dibuat.",
-      [
-        {
-          text: "OK",
-          onPress: () => {
-            if (onRegisterSuccess) {
-              onRegisterSuccess();
+    if (password !== confirmPassword) {
+      Alert.alert("Peringatan", "Kata sandi dan konfirmasi kata sandi tidak sama!");
+      return;
+    }
+
+    setLoading(true);
+    console.log('--- MEMULAI REGISTRASI ---');
+    console.log('Email:', email.trim());
+
+    try {
+      // Buat fungsi timeout 10 detik agar tidak menggantung selamanya
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Koneksi timeout, server Supabase tidak merespons.')), 10000)
+      );
+
+      // Jalankan signUp bersamaan dengan timeout
+      const signUpPromise = supabase.auth.signUp({
+        email: email.trim(),
+        password: password,
+        options: {
+          data: { full_name: name },
+        },
+      });
+
+      const result: any = await Promise.race([signUpPromise, timeoutPromise]);
+      const { data, error } = result;
+
+      setLoading(false);
+
+      console.log('Data dari Supabase:', data);
+      console.log('Error dari Supabase:', error);
+
+      if (error) {
+        Alert.alert("Gagal Daftar", error.message);
+      } else {
+        Alert.alert(
+          "Berhasil!",
+          "Akun Anda berhasil dibuat. Silakan masuk.",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                if (onRegisterSuccess) {
+                  onRegisterSuccess();
+                }
+              }
             }
-          }
-        }
-      ]
-    );
+          ]
+        );
+      }
+    } catch (err: any) {
+      setLoading(false);
+      console.log('Error Catch:', err.message);
+      Alert.alert("Kesalahan", err.message || "Terjadi kesalahan jaringan.");
+    }
   };
 
   return (
@@ -125,8 +163,14 @@ export default function RegisterScreen({ onPressLogin, onPressBack, onRegisterSu
             </View>
           </View>
 
-          <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-            <Text style={styles.registerButtonText}>Daftar</Text>
+          <TouchableOpacity 
+            style={[styles.registerButton, loading && { opacity: 0.7 }]} 
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            <Text style={styles.registerButtonText}>
+              {loading ? 'Memproses...' : 'Daftar'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -142,7 +186,6 @@ export default function RegisterScreen({ onPressLogin, onPressBack, onRegisterSu
   );
 }
 
-// (Bagian styles biarkan tetap sama)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
   scrollContent: { padding: 24, flexGrow: 1, justifyContent: 'center' },
