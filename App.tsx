@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import LoginScreen from './src/screens/LoginScreen';
-import HomeScreen from './src/screens/HomeScreen'; // Pastikan path file HomeScreen sesuai
+import MainScreen from './src/screens/MainScreen'; // Tab container (Home + navigasi)
 
-// 1. Tambahkan 'home' ke dalam ScreenType
+// ScreenType: 'home' kini memuat MainScreen yang mengelola tab & profil
 type ScreenType = 'onboarding' | 'register' | 'login' | 'home';
 
 export default function App() {
@@ -12,37 +12,37 @@ export default function App() {
 
   if (currentScreen === 'onboarding') {
     return (
-      <OnboardingScreen 
-        onPressStart={() => setCurrentScreen('register')} 
-        onPressLogin={() => setCurrentScreen('login')} 
+      <OnboardingScreen
+        onPressStart={() => setCurrentScreen('register')}
+        onPressLogin={() => setCurrentScreen('login')}
       />
     );
   } else if (currentScreen === 'register') {
     return (
-      <RegisterScreen 
-        onPressLogin={() => setCurrentScreen('login')} 
+      <RegisterScreen
+        onPressLogin={() => setCurrentScreen('login')}
         onPressBack={() => setCurrentScreen('onboarding')}
-        // Jika ingin langsung ke Home setelah daftar, bisa ubah ke 'home'
-        onRegisterSuccess={() => setCurrentScreen('home')} 
+        onRegisterSuccess={() => setCurrentScreen('home')}
       />
     );
   } else if (currentScreen === 'login') {
     return (
-      <LoginScreen 
-        onPressRegister={() => setCurrentScreen('register')} 
+      <LoginScreen
+        onPressRegister={() => setCurrentScreen('register')}
         onPressBack={() => setCurrentScreen('onboarding')}
-        // 2. Tambahkan aksi saat login sukses
-        onLoginSuccess={() => setCurrentScreen('home')} 
+        onLoginSuccess={() => setCurrentScreen('home')}
       />
     );
   } else if (currentScreen === 'home') {
-    return <HomeScreen />;
+    // MainScreen mengelola: HomeScreen, SearchScreen, MyCreationsScreen,
+    // ShowcaseScreen, ProfileScreen, dan floating bottom navigation.
+    return <MainScreen />;
   }
 
   return (
-    <OnboardingScreen 
-      onPressStart={() => setCurrentScreen('register')} 
-      onPressLogin={() => setCurrentScreen('login')} 
+    <OnboardingScreen
+      onPressStart={() => setCurrentScreen('register')}
+      onPressLogin={() => setCurrentScreen('login')}
     />
   );
 }

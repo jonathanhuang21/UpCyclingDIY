@@ -1,427 +1,712 @@
+import React from 'react';
 import {
+  FlatList,
   Image,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-export default function HomeScreen() {
-  // Data dummy untuk kategori sampah dengan gambar lokal
-  const categories = [
-    { id: '1', title: 'Kardus', image: require('../../assets/images/frame1/kardus.png') },
-    { id: '2', title: 'Botol Plastik', image: require('../../assets/images/frame1/botol_air.png') },
-    { id: '3', title: 'Pakaian', image: require('../../assets/images/frame1/pakaian.png') },
-    { id: '4', title: 'Kaca', image: require('../../assets/images/frame1/botol_kaca.png') },
-    { 
-      id: '5', 
-      title: 'Kertas', 
-      image: require('../../assets/images/frame1/kertas.png'),
-      imageStyle: { width: '100%', height: '100%' } 
-    },
-    { id: '6', title: 'Kaleng', image: require('../../assets/images/frame1/kaleng.png') },
-  ];
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-  // Data dummy untuk inspirasi populer dengan gambar lokal
-  const inspirations = [
-    { 
-      id: '1', 
-      title: 'Organizer Desk dari Kardus', 
-      rating: '4.5', 
-      image: require('../../assets/images/frame1/inspirasi.png') 
-    },
-    { 
-      id: '2', 
-      title: 'Organizer Desk dari Kardus', 
-      rating: '4.5', 
-      image: require('../../assets/images/frame1/inspirasi.png') 
-    },
-    { 
-      id: '3', 
-      title: 'Organizer Desk dari Kardus', 
-      rating: '4.5', 
-      image: require('../../assets/images/frame1/inspirasi.png') 
-    },
-    { 
-      id: '4', 
-      title: 'Organizer Desk dari Kardus', 
-      rating: '4.5', 
-      image: require('../../assets/images/frame1/inspirasi.png') 
-    },
-  ];
+interface HomeScreenProps {
+  onProfilePress?: () => void;
+}
 
+interface CategoryItem {
+  id: string;
+  title: string;
+  image: ReturnType<typeof require>;
+  bgColor: string;
+}
+
+interface InspirationItem {
+  id: string;
+  title: string;
+  rating: string;
+  image: ReturnType<typeof require>;
+}
+
+// ─── Data ────────────────────────────────────────────────────────────────────
+
+const CATEGORIES: CategoryItem[] = [
+  {
+    id: '1',
+    title: 'Kardus',
+    image: require('../../assets/images/frame1/kardus.png'),
+    bgColor: '#F5E5C4',
+  },
+  {
+    id: '2',
+    title: 'Botol Plastik',
+    image: require('../../assets/images/frame1/botol_air.png'),
+    bgColor: '#C0E8F4',
+  },
+  {
+    id: '3',
+    title: 'Pakaian',
+    image: require('../../assets/images/frame1/pakaian.png'),
+    bgColor: '#FFF5C0',
+  },
+  {
+    id: '4',
+    title: 'Kaca',
+    image: require('../../assets/images/frame1/botol_kaca.png'),
+    bgColor: '#D2EDCE',
+  },
+  {
+    id: '5',
+    title: 'Kertas',
+    image: require('../../assets/images/frame1/kertas.png'),
+    bgColor: '#E2E2E2',
+  },
+  {
+    id: '6',
+    title: 'Kaleng',
+    image: require('../../assets/images/frame1/kaleng.png'),
+    bgColor: '#FFD9B8',
+  },
+];
+
+const INSPIRATIONS: InspirationItem[] = [
+  {
+    id: '1',
+    title: 'Organizer Desk dari Kardus',
+    rating: '4.5',
+    image: require('../../assets/images/frame1/inspirasi.png'),
+  },
+  {
+    id: '2',
+    title: 'Organizer Desk dari Kardus',
+    rating: '4.5',
+    image: require('../../assets/images/frame1/inspirasi.png'),
+  },
+  {
+    id: '3',
+    title: 'Organizer Desk dari Kardus',
+    rating: '4.5',
+    image: require('../../assets/images/frame1/inspirasi.png'),
+  },
+  {
+    id: '4',
+    title: 'Organizer Desk dari Kardus',
+    rating: '4.5',
+    image: require('../../assets/images/frame1/inspirasi.png'),
+  },
+];
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function Header({ onProfilePress }: { onProfilePress?: () => void }) {
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        
-        {/* 1. HEADER SECTION */}
-        <View style={styles.headerContainer}>
-          <View style={styles.userInfo}>
-            <View style={styles.avatarContainer}>
-              <Text style={styles.avatarEmoji}>👨🏽‍🦱</Text>
-            </View>
-            <View>
-              <Text style={styles.greetingTitle}>Halo, Budi!</Text>
-              <Text style={styles.greetingSubtitle}>Ayo kreasi hari ini!</Text>
-            </View>
-          </View>
-          
-          <View style={styles.headerRight}>
-            <View style={styles.badgeContainer}>
-              <Text style={styles.badgeText}>⭐ 100 XP</Text>
-            </View>
-            <TouchableOpacity style={styles.notifButton}>
-              <Text style={styles.notifIcon}>🔔</Text>
-            </TouchableOpacity>
-          </View>
+    <View style={styles.headerContainer}>
+      {/* Left: avatar + greeting */}
+      <View style={styles.headerLeft}>
+        <View style={styles.smallAvatarContainer}>
+          <Text style={styles.smallAvatarEmoji}>👨🏽‍🦱</Text>
+        </View>
+        <View>
+          <Text style={styles.greetingTitle}>Halo, Budi!</Text>
+          <Text style={styles.greetingSubtitle}>Ayo Kreasi hari ini! 🤍</Text>
+        </View>
+      </View>
+
+      {/* Right: XP badge + notif + profile avatar */}
+      <View style={styles.headerRight}>
+        {/* XP Badge */}
+        <View style={styles.xpBadge}>
+          <Ionicons name="star" size={13} color="#FFB800" />
+          <Text style={styles.xpText}>100 XP</Text>
         </View>
 
-        {/* 2. WEEKLY CHALLENGE BANNER */}
-        <View style={styles.bannerContainer}>
-          <View style={styles.bannerTextContent}>
-            <Text style={styles.bannerTitle}>Weekly Challenge</Text>
-            <Text style={styles.bannerSubtitle}>Kreasi dari Plastik</Text>
-            <TouchableOpacity style={styles.bannerButton}>
-              <Text style={styles.bannerButtonText}>Ikut Sekarang</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.bannerIllustration}>
-            <Image 
-              source={require('../../assets/images/frame1/banner.png')} 
-              style={styles.bannerImage} 
-              resizeMode="contain" 
-            />
-          </View>
-        </View>
+        {/* Notification bell */}
+        <TouchableOpacity style={styles.notifButton}>
+          <Ionicons name="notifications" size={22} color="#444" />
+          <View style={styles.notifDot} />
+        </TouchableOpacity>
 
-        {/* 3. SECTION: PUNYA APA HARI INI? */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Punya Apa Hari Ini?</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAllText}>Lihat Semua</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.gridContainer}>
-          {categories.map((item) => (
-            <TouchableOpacity key={item.id} style={styles.categoryCard}>
-              <View style={styles.categoryCircle}>
-                <Image 
-                  source={item.image} 
-                  style={[styles.categoryImage, item.imageStyle]} 
-                  resizeMode="cover" 
-                />
-              </View>
-              <Text style={styles.categoryText}>{item.title}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* 4. SECTION: INSPIRASI POPULER */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Inspirasi Populer</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAllText}>Lihat Semua</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ScrollView Horizontal (Sudah Diperbaiki) */}
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          style={styles.horizontalScroll}
-          contentContainerStyle={styles.horizontalScrollContent}
+        {/* Profile avatar (clickable) */}
+        <TouchableOpacity
+          style={styles.profileAvatarButton}
+          onPress={onProfilePress}
+          activeOpacity={0.85}
         >
-          {inspirations.map((item) => (
-            <View key={item.id} style={styles.inspirationCard}>
-              <View style={styles.inspirationImageContainer}>
-                <Image 
-                  source={item.image} 
-                  style={styles.inspirationImage} 
-                  resizeMode="cover" 
-                />
-              </View>
-              <Text style={styles.inspirationTitle} numberOfLines={2}>
-                {item.title}
-              </Text>
-              <View style={styles.ratingContainer}>
-                <Text style={styles.starIcon}>⭐</Text>
-                <Text style={styles.ratingText}>{item.rating}</Text>
-              </View>
-              <TouchableOpacity style={styles.detailButton}>
-                <Text style={styles.detailButtonText}>Detail</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </ScrollView>
-
-      </ScrollView>
-
-      {/* 5. BOTTOM NAVIGATION BAR */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <Text style={{ fontSize: 20 }}>🏠</Text>
-          <Text style={[styles.navText, styles.activeNavText]}>Beranda</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.navItem}>
-          <Text style={{ fontSize: 20 }}>🔍</Text>
-          <Text style={styles.navText}>Cari</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.navItem}>
-          <Text style={{ fontSize: 20 }}>👤</Text>
-          <Text style={styles.navText}>Profil</Text>
+          <View style={styles.profileAvatarCircle}>
+            <Text style={styles.profileAvatarEmoji}>👨🏽‍🦱</Text>
+          </View>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
+function WeeklyChallengeBanner() {
+  return (
+    <View style={styles.bannerContainer}>
+      {/* Background decorative circles */}
+      <View style={styles.bannerDecorCircle1} />
+      <View style={styles.bannerDecorCircle2} />
+      <View style={styles.bannerDecorCircle3} />
+
+      {/* Stars decorative */}
+      <Text style={styles.bannerDecorStar1}>✦</Text>
+      <Text style={styles.bannerDecorStar2}>✦</Text>
+
+      {/* Content row */}
+      <View style={styles.bannerContentRow}>
+        {/* Text side */}
+        <View style={styles.bannerTextSide}>
+          {/* Chip label */}
+          <View style={styles.bannerChip}>
+            <Text style={styles.bannerChipText}>Weekly Challenge</Text>
+          </View>
+
+          <Text style={styles.bannerTitle}>Kreasi dari Plastik</Text>
+
+          <TouchableOpacity style={styles.bannerButton} activeOpacity={0.85}>
+            <Text style={styles.bannerButtonText}>Ikut Sekarang</Text>
+            <Ionicons name="chevron-forward" size={13} color="#2D7A3A" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Illustration side */}
+        <View style={styles.bannerIllustrationSide}>
+          <Image
+            source={require('../../assets/images/frame1/banner.png')}
+            style={styles.bannerIllustrationImage}
+            resizeMode="contain"
+          />
+        </View>
+      </View>
+
+      {/* Dot indicators */}
+      <View style={styles.bannerDots}>
+        <View style={[styles.bannerDot, styles.bannerDotActive]} />
+        <View style={styles.bannerDot} />
+        <View style={styles.bannerDot} />
+      </View>
+    </View>
+  );
+}
+
+function SectionHeader({
+  icon,
+  title,
+  onSeeAll,
+}: {
+  icon: string;
+  title: string;
+  onSeeAll?: () => void;
+}) {
+  return (
+    <View style={styles.sectionHeader}>
+      <View style={styles.sectionTitleRow}>
+        <Text style={styles.sectionIcon}>{icon}</Text>
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
+      <TouchableOpacity style={styles.seeAllButton} onPress={onSeeAll}>
+        <Text style={styles.seeAllText}>Lihat Semua</Text>
+        <Ionicons name="arrow-forward" size={13} color="#2D7A3A" />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function CategoryGrid() {
+  return (
+    <View style={styles.gridContainer}>
+      {CATEGORIES.map((item) => (
+        <TouchableOpacity
+          key={item.id}
+          style={styles.categoryCard}
+          activeOpacity={0.8}
+        >
+          {/* Lingkaran: overflow hidden agar gambar ter-crop mengikuti bentuk bulat */}
+          <View style={[styles.categoryCircle, { backgroundColor: item.bgColor }]}>
+            <Image
+              source={item.image}
+              style={styles.categoryImage}
+              resizeMode="cover" // Opsi B: gambar memenuhi seluruh lingkaran
+            />
+          </View>
+          <Text style={styles.categoryLabel}>{item.title}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+function InspirationCard({ item }: { item: InspirationItem }) {
+  return (
+    <View style={styles.inspirationCard}>
+      {/* Image area */}
+      <View style={styles.inspirationImageWrap}>
+        <Image
+          source={item.image}
+          style={styles.inspirationImage}
+          resizeMode="cover"
+        />
+        {/* Heart button */}
+        <TouchableOpacity style={styles.heartButton} activeOpacity={0.8}>
+          <Ionicons name="heart-outline" size={16} color="#888" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Info */}
+      <Text style={styles.inspirationTitle} numberOfLines={2}>
+        {item.title}
+      </Text>
+
+      {/* Rating */}
+      <View style={styles.ratingRow}>
+        <Ionicons name="star" size={12} color="#FFB800" />
+        <Text style={styles.ratingText}>{item.rating}</Text>
+      </View>
+
+      {/* Detail button */}
+      <TouchableOpacity style={styles.detailButton} activeOpacity={0.85}>
+        <Text style={styles.detailButtonText}>Detail</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
+
+export default function HomeScreen({ onProfilePress }: HomeScreenProps) {
+  return (
+    <ScrollView
+      style={styles.scrollView}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
+    >
+      {/* 1. Header */}
+      <Header onProfilePress={onProfilePress} />
+
+      {/* 2. Weekly Challenge Banner */}
+      <WeeklyChallengeBanner />
+
+      {/* 3. Kategori */}
+      <SectionHeader icon="🌿" title="Punya Apa Hari Ini?" />
+      <CategoryGrid />
+
+      {/* 4. Inspirasi Populer */}
+      <SectionHeader icon="✨" title="Inspirasi Populer" />
+      <FlatList
+        data={INSPIRATIONS}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.inspirationListContent}
+        renderItem={({ item }) => <InspirationCard item={item} />}
+        style={styles.inspirationList}
+        scrollEnabled={true}
+      />
+
+      {/* Extra bottom spacing so last card isn't hidden by floating bottom nav */}
+      <View style={styles.bottomSpacer} />
+    </ScrollView>
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: {
+  scrollView: {
     flex: 1,
     backgroundColor: '#F3F9F1',
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 80,
+    paddingHorizontal: 16,
+    paddingTop: 14,
   },
-  bannerIllustration: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 10,
-  },
-  bannerImage: {
-    width: 90,
-    height: 90,
-  },
+
+  // ── Header ────────────────────────────────────────────────────────────────
   headerContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 10,
+    marginBottom: 16,
   },
-  userInfo: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
-  avatarContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#C8E6C9',
+  smallAvatarContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#D0EDCE',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
     overflow: 'hidden',
   },
-  avatarEmoji: {
-    fontSize: 28,
+  smallAvatarEmoji: {
+    fontSize: 25,
   },
   greetingTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1E1E1E',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1A3C1A',
   },
   greetingSubtitle: {
-    fontSize: 13,
-    color: '#666666',
+    fontSize: 11.5,
+    color: '#6A8A6A',
+    marginTop: 1,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
-  badgeContainer: {
-    backgroundColor: '#81C784',
+  xpBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 20,
-    marginRight: 8,
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  badgeText: {
-    color: '#FFF',
-    fontWeight: 'bold',
+  xpText: {
     fontSize: 12,
+    fontWeight: '700',
+    color: '#1A3C1A',
   },
   notifButton: {
-    padding: 6,
-  },
-  notifIcon: {
-    fontSize: 20,
-  },
-  bannerContainer: {
-    backgroundColor: '#1B5E20',
-    borderRadius: 20,
-    padding: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    position: 'relative',
+    width: 38,
+    height: 38,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 19,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  bannerTextContent: {
+  notifDot: {
+    position: 'absolute',
+    top: 7,
+    right: 7,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  profileAvatarButton: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  profileAvatarCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#C8E6C9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  profileAvatarEmoji: {
+    fontSize: 24,
+  },
+
+  // ── Banner ────────────────────────────────────────────────────────────────
+  bannerContainer: {
+  backgroundColor: '#176329',
+  borderRadius: 22,
+  paddingHorizontal: 18,
+  paddingTop: 16,
+  paddingBottom: 14,
+  marginBottom: 22,
+  overflow: 'hidden',
+  position: 'relative',
+  height: 150,   // ← tambahkan, ubah angkanya sesuai selera
+},
+  bannerDecorCircle1: {
+    position: 'absolute',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    top: -20,
+    left: 100,
+  },
+  bannerDecorCircle2: {
+    position: 'absolute',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    bottom: -10,
+    left: 60,
+  },
+  bannerDecorCircle3: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    top: 8,
+    left: 160,
+  },
+  bannerDecorStar1: {
+    position: 'absolute',
+    top: 10,
+    right: 108,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.65)',
+  },
+  bannerDecorStar2: {
+    position: 'absolute',
+    top: 44,
+    left: 148,
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.45)',
+  },
+  bannerContentRow: {
+  flex: 1,   // ← tambahkan agar mengisi tinggi banner
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+},
+  bannerTextSide: {
     flex: 1,
+    paddingRight: 6,
   },
-  bannerTitle: {
-    color: '#C8E6C9',
-    fontSize: 14,
+  bannerChip: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.45)',
+    borderRadius: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    marginBottom: 8,
+  },
+  bannerChipText: {
+    fontSize: 10.5,
+    color: '#FFFFFF',
     fontWeight: '600',
   },
-  bannerSubtitle: {
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginVertical: 6,
+  bannerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    lineHeight: 25,
+    marginBottom: 25,
   },
   bannerButton: {
-    backgroundColor: '#FFF',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
     alignSelf: 'flex-start',
-    marginTop: 8,
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 3,
   },
   bannerButtonText: {
-    color: '#1B5E20',
-    fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#176329',
   },
+  bannerIllustrationSide: {
+    width: 110,
+    height: 110,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bannerIllustrationImage: {
+    width: 110,
+    height: 110,
+  },
+  bannerDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 5,
+  },
+  bannerDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  bannerDotActive: {
+    width: 16,
+    backgroundColor: '#FFFFFF',
+  },
+
+  // ── Section header ────────────────────────────────────────────────────────
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  sectionIcon: {
+    fontSize: 17,
+  },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1E1E1E',
+    fontWeight: '800',
+    color: '#1A3C1A',
+  },
+  seeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   seeAllText: {
-    fontSize: 12,
-    color: '#388E3C',
+    fontSize: 12.5,
     fontWeight: '600',
+    color: '#2D7A3A',
   },
+
+  // ── Category grid ─────────────────────────────────────────────────────────
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 22,
   },
   categoryCard: {
+    // 3 kolom: (100% - 2 gap) / 3
     width: '31%',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   categoryCircle: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#F0F4F1',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    overflow: 'hidden', // ← Opsi B: potong gambar mengikuti lingkaran
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 6,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    overflow: 'hidden',
+    marginBottom: 7,
   },
   categoryImage: {
-    width: '100%',
+    width: '100%', // ← Opsi B: penuhi seluruh lingkaran
     height: '100%',
   },
-  categoryText: {
+  categoryLabel: {
     fontSize: 12,
-    color: '#333',
+    fontWeight: '600',
+    color: '#2A2A2A',
     textAlign: 'center',
-    fontWeight: '500',
   },
-  horizontalScroll: {
-    marginBottom: 20,
+
+  // ── Inspiration ───────────────────────────────────────────────────────────
+  inspirationList: {
+    marginLeft: -16,
+    marginRight: -16,
   },
-  horizontalScrollContent: {
-    paddingRight: 16, // Agar card terakhir tidak menempel ke tepi layar kanan
+  inspirationListContent: {
+    paddingLeft: 16,
+    paddingRight: 16,
+    paddingBottom: 4,
   },
   inspirationCard: {
-    backgroundColor: '#FFF',
-    width: 140,
-    borderRadius: 16,
-    padding: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    width: 150,
     marginRight: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#EFEFEF',
+    shadowColor: '#1A3C1A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+    paddingBottom: 12,
+    overflow: 'visible',
   },
-  inspirationImageContainer: {
+  inspirationImageWrap: {
     width: '100%',
-    height: 90,
-    backgroundColor: '#E8F5E9',
-    borderRadius: 12,
+    height: 108,
+    backgroundColor: '#E8D5A8',
+    position: 'relative',
+    marginBottom: 10,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
     overflow: 'hidden',
-    marginBottom: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   inspirationImage: {
     width: '100%',
     height: '100%',
   },
+  heartButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   inspirationTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
-    height: 32,
+    color: '#1A3C1A',
+    paddingHorizontal: 10,
+    marginBottom: 5,
+    lineHeight: 17,
+    minHeight: 34,
   },
-  ratingContainer: {
+  ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 4,
-  },
-  starIcon: {
-    fontSize: 12,
-    marginRight: 4,
+    paddingHorizontal: 10,
+    marginBottom: 8,
+    gap: 4,
   },
   ratingText: {
     fontSize: 12,
-    color: '#666',
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#555',
   },
   detailButton: {
-    marginTop: 4,
+    marginHorizontal: 10,
+    backgroundColor: '#EAF5EC',
+    borderRadius: 20,
+    paddingVertical: 7,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#C5E8C8',
   },
   detailButtonText: {
     fontSize: 12,
-    color: '#2E7D32',
-    fontWeight: 'bold',
-    textDecorationLine: 'underline',
+    fontWeight: '700',
+    color: '#176329',
   },
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    backgroundColor: '#FFF',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-  },
-  navItem: {
-    alignItems: 'center',
-  },
-  navText: {
-    fontSize: 10,
-    color: '#757575',
-    marginTop: 2,
-  },
-  activeNavText: {
-    color: '#2E7D32',
-    fontWeight: 'bold',
+
+  // ── Spacer ────────────────────────────────────────────────────────────────
+  bottomSpacer: {
+    // Pastikan konten tidak tertutup floating bottom nav (~70px) + margin aman
+    height: 120,
   },
 });
