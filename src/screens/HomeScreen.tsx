@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Image,
   SafeAreaView,
@@ -7,28 +7,74 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Alert
+  Alert,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { supabase } from '../services/supabase'; // Pastikan path import supabase sudah benar
 
 export default function HomeScreen() {
-  // Fungsi untuk menangani proses logout
-  const handleLogout = async () => {
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  // Menjalankan logout melalui Supabase.
+  // App.tsx akan mendeteksi session menjadi null dan kembali ke Onboarding.
+  const performLogout = async () => {
+    if (loggingOut) return;
+
+    try {
+      setLoggingOut(true);
+
+      const { error } = await supabase.auth.signOut({
+        scope: 'local',
+      });
+
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Terjadi kesalahan saat keluar dari akun.';
+
+      if (Platform.OS === 'web') {
+        window.alert(`Gagal Keluar: ${message}`);
+      } else {
+        Alert.alert('Gagal Keluar', message);
+      }
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
+  // Konfirmasi logout: window.confirm untuk web, Alert untuk Android/iOS.
+  const handleLogout = () => {
+    if (loggingOut) return;
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(
+        'Apakah Anda yakin ingin keluar dari akun Upcycling DIY?'
+      );
+
+      if (confirmed) {
+        void performLogout();
+      }
+
+      return;
+    }
+
     Alert.alert(
-      "Konfirmasi Keluar",
-      "Apakah Anda yakin ingin keluar dari akun?",
+      'Konfirmasi Keluar',
+      'Apakah Anda yakin ingin keluar dari akun Upcycling DIY?',
       [
-        { text: "Batal", style: "cancel" },
+        { text: 'Batal', style: 'cancel' },
         {
-          text: "Keluar",
-          style: "destructive",
-          onPress: async () => {
-            const { error } = await supabase.auth.signOut();
-            if (error) {
-              Alert.alert("Gagal Keluar", error.message);
-            }
-          }
-        }
+          text: 'Keluar',
+          style: 'destructive',
+          onPress: () => {
+            void performLogout();
+          },
+        },
       ]
     );
   };
@@ -103,8 +149,19 @@ export default function HomeScreen() {
             </TouchableOpacity>
 
             {/* Tombol Logout Baru di Samping Lonceng */}
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <Text style={styles.logoutIcon}>🚪</Text>
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={handleLogout}
+              disabled={loggingOut}
+              accessibilityRole="button"
+              accessibilityLabel="Logout"
+              accessibilityState={{ disabled: loggingOut }}
+            >
+              {loggingOut ? (
+                <ActivityIndicator size="small" color="#2F6B32" />
+              ) : (
+                <Text style={styles.logoutIcon}>🚪</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>

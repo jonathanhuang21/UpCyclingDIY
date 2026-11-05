@@ -1,153 +1,189 @@
+
 import React from 'react';
 import {
   Image,
-  SafeAreaView,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
-  View
+  View,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-// 1. Definisikan tipe props di sini
-interface OnboardingScreenProps {
-  onPressStart?: () => void;
-  onPressLogin?: () => void;
-}
+type OnboardingScreenProps = {
+  onPressStart: () => void;
+  onPressLogin: () => void;
+};
 
-// 2. Terapkan interface pada parameter fungsi
-export default function OnboardingScreen({ onPressStart, onPressLogin }: OnboardingScreenProps) {
+const GREEN = '#2F6B32';
+const DARK_GREEN = '#244B29';
+const LIGHT_GREEN = '#EDF6EE';
+
+export default function OnboardingScreen({
+  onPressStart,
+  onPressLogin,
+}: OnboardingScreenProps) {
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        
-        <View style={styles.illustrationContainer}>
-  <View style={styles.earthCircle}>
-    <Image 
-      source={require('../../assets/images/frame1/Sementara.png')} // Ganti dengan path gambar Anda
-      style={styles.earthImage}
-      resizeMode="contain"
-    />
-  </View>
-</View>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <StatusBar style="dark" />
+
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Illustration */}
+        <View style={styles.imageContainer}>
+          <Image
+            source={require('../../assets/images/frame1/Sementara.png')}
+            style={styles.illustration}
+            resizeMode="contain"
+          />
+        </View>
+
+        {/* App Introduction */}
         <View style={styles.textContainer}>
-          <Text style={styles.appName}>Upcycling DIY</Text>
-          <Text style={styles.headline}>Ubah Barang Bekas Jadi Barang Berkelas</Text>
+          <Text style={styles.appName}>
+            Upcycling <Text style={styles.appNameAccent}>DIY</Text>
+          </Text>
+
+          <Text style={styles.tagline}>
+            Ubah Barang Bekas{' '}
+            <Text style={styles.taglineAccent}>
+              Jadi Barang Berkelas
+            </Text>
+          </Text>
+
           <Text style={styles.description}>
             Ide kreatif, langkah mudah, untuk masa depan yang lebih hijau.
           </Text>
         </View>
 
-        <View style={styles.actionContainer}>
-          <TouchableOpacity style={styles.primaryButton} onPress={onPressStart}>
-            <Text style={styles.primaryButtonText}>Mulai Sekarang</Text>
-          </TouchableOpacity>
+        {/* Buttons */}
+        <View style={styles.buttonContainer}>
+          <Pressable
+            onPress={onPressStart}
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={styles.primaryButtonText}>
+              Mulai Sekarang
+            </Text>
+          </Pressable>
 
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>Sudah punya akun? </Text>
-            <TouchableOpacity onPress={onPressLogin}>
+          <View style={styles.loginContainer}>
+            <Text style={styles.loginText}>
+              Sudah punya akun?{' '}
+            </Text>
+
+            <Pressable
+              onPress={onPressLogin}
+              accessibilityRole="button"
+            >
               <Text style={styles.loginLink}>Masuk</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
-
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-// (Bagian styles biarkan tetap sama seperti sebelumnya)
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
   },
   content: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
+    flexGrow: 1,
+    paddingHorizontal: 28,
+    paddingTop: 15,
+    paddingBottom: 18,
+    justifyContent: 'space-between',
   },
-  illustrationContainer: {
-    flex: 1,
+  imageContainer: {
+    width: '100%',
+    height: 300,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
   },
-  earthCircle: {
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: '#F3F9F1',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2EFE0',
-  },
-  earthImage: {
-    width: '80%',  // Atur persentase sesuai keinginan agar ada padding manis
-    height: '80%',
+  illustration: {
+    width: '100%',
+    height: '100%',
   },
   textContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginTop: 5,
+    paddingHorizontal: 5,
   },
   appName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1B5E20',
-    marginBottom: 12,
-  },
-  headline: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2E7D32',
+    fontSize: 33,
+    fontWeight: '800',
+    color: DARK_GREEN,
+    letterSpacing: -1,
     textAlign: 'center',
-    marginBottom: 10,
-    paddingHorizontal: 20,
+  },
+  appNameAccent: {
+    color: GREEN,
+  },
+  tagline: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: DARK_GREEN,
+    textAlign: 'center',
+    marginTop: 12,
+    lineHeight: 26,
+  },
+  taglineAccent: {
+    color: GREEN,
   },
   description: {
     fontSize: 13,
-    color: '#666666',
+    color: '#657166',
     textAlign: 'center',
-    paddingHorizontal: 30,
-    lineHeight: 18,
+    lineHeight: 21,
+    marginTop: 20,
+    maxWidth: 290,
   },
-  actionContainer: {
+  buttonContainer: {
     width: '100%',
+    marginTop: 38,
     alignItems: 'center',
-    marginBottom: 150,
   },
   primaryButton: {
-    backgroundColor: '#81C784',
     width: '100%',
+    height: 54,
+    backgroundColor: GREEN,
     borderRadius: 28,
-    paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    justifyContent: 'center',
+    elevation: 3,
   },
   primaryButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
-  footerRow: {
+  pressed: {
+    opacity: 0.8,
+  },
+  loginContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 23,
   },
-  footerText: {
-    fontSize: 13,
-    color: '#666666',
+  loginText: {
+    color: '#727B72',
+    fontSize: 12,
   },
   loginLink: {
-    fontSize: 13,
-    color: '#2E7D32',
-    fontWeight: 'bold',
+    color: GREEN,
+    fontSize: 12,
+    fontWeight: '700',
     textDecorationLine: 'underline',
   },
 });
