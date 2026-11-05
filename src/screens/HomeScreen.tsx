@@ -11,7 +11,15 @@ import {
 } from 'react-native';
 import { supabase } from '../services/supabase'; // Pastikan path import supabase sudah benar
 
-export default function HomeScreen() {
+import BottomNav, { Tab } from '../components/BottomNav';
+
+type Props = {
+  onNavigate: (tab: Tab) => void;
+  onOpenCategory: (title: string) => void;
+  onOpenGuide: () => void;
+};
+
+export default function HomeScreen({ onNavigate, onOpenCategory, onOpenGuide }: Props) {
   // Fungsi untuk menangani proses logout
   const handleLogout = async () => {
     Alert.alert(
@@ -131,14 +139,14 @@ export default function HomeScreen() {
         {/* 3. SECTION: PUNYA APA HARI INI? */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Punya Apa Hari Ini?</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => onNavigate('search')}>
             <Text style={styles.seeAllText}>Lihat Semua</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.gridContainer}>
           {categories.map((item) => (
-            <TouchableOpacity key={item.id} style={styles.categoryCard}>
+            <TouchableOpacity key={item.id} style={styles.categoryCard} onPress={() => onOpenCategory(item.title)}>
               <View style={styles.categoryCircle}>
                 <Image 
                   source={item.image} 
@@ -154,7 +162,7 @@ export default function HomeScreen() {
         {/* 4. SECTION: INSPIRASI POPULER */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Inspirasi Populer</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => onNavigate('search')}>
             <Text style={styles.seeAllText}>Lihat Semua</Text>
           </TouchableOpacity>
         </View>
@@ -182,7 +190,7 @@ export default function HomeScreen() {
                 <Text style={styles.starIcon}>⭐</Text>
                 <Text style={styles.ratingText}>{item.rating}</Text>
               </View>
-              <TouchableOpacity style={styles.detailButton}>
+              <TouchableOpacity style={styles.detailButton} onPress={onOpenGuide}>
                 <Text style={styles.detailButtonText}>Detail</Text>
               </TouchableOpacity>
             </View>
@@ -192,22 +200,7 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* 5. BOTTOM NAVIGATION BAR */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <Text style={{ fontSize: 20 }}>🏠</Text>
-          <Text style={[styles.navText, styles.activeNavText]}>Beranda</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.navItem}>
-          <Text style={{ fontSize: 20 }}>🔍</Text>
-          <Text style={styles.navText}>Cari</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.navItem}>
-          <Text style={{ fontSize: 20 }}>👤</Text>
-          <Text style={styles.navText}>Profil</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomNav active="home" onPress={onNavigate} />
     </SafeAreaView>
   );
 }
