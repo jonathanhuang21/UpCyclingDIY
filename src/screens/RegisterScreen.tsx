@@ -9,15 +9,18 @@ import {
   View,
   Alert
 } from 'react-native';
+import { supabase } from '../services/supabase';
 
-// 1. TAMBAHKAN onRegisterSuccess DI SINI
 interface RegisterScreenProps {
   onPressLogin?: () => void;
   onPressBack?: () => void;
-  onRegisterSuccess?: () => void; // <-- Tambahkan baris ini
+  onRegisterSuccess?: () => void;
 }
 
-// 2. TERAPKAN PADA PARAMETER KOMPONEN
+const GREEN = '#1B5E20';
+const LIGHT_GREEN = '#2E7D32';
+const BG_COLOR = '#F3F9F1';
+
 export default function RegisterScreen({ onPressLogin, onPressBack, onRegisterSuccess }: RegisterScreenProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -26,36 +29,64 @@ export default function RegisterScreen({ onPressLogin, onPressBack, onRegisterSu
   
   const [securePassword, setSecurePassword] = useState(true);
   const [secureConfirm, setSecureConfirm] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = () => {
-    if (!name || !email || !password) {
+  const handleRegister = async () => {
+    if (!name || !email || !password || !confirmPassword) {
       Alert.alert("Peringatan", "Semua kolom harus diisi!");
       return;
     }
 
-    console.log('Register:', { name, email, password });
-    
-    // Tampilkan pop-up sukses lalu pindah ke Home/Dashboard
-    Alert.alert(
-      "Berhasil!",
-      "Akun Anda berhasil dibuat.",
-      [
-        {
-          text: "OK",
-          onPress: () => {
-            if (onRegisterSuccess) {
-              onRegisterSuccess();
+    if (password !== confirmPassword) {
+      Alert.alert("Peringatan", "Password dan Konfirmasi Password tidak sama!");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: password,
+        options: {
+          data: {
+            full_name: name,
+          },
+        },
+      });
+
+      if (error) {
+        Alert.alert("Gagal Daftar", error.message);
+        setLoading(false);
+        return;
+      }
+
+      Alert.alert(
+        "Berhasil!",
+        "Akun Anda berhasil dibuat. Silakan masuk.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              if (onRegisterSuccess) {
+                onRegisterSuccess();
+              }
             }
           }
-        }
-      ]
-    );
+        ]
+      );
+    } catch (err: any) {
+      Alert.alert("Terjadi Kesalahan", err.message || "Gagal melakukan registrasi.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
+        {/* Header / Logo */}
         <View style={styles.headerContainer}>
           <View style={styles.logoCircle}>
             <Text style={styles.logoEmoji}>🌱</Text>
@@ -66,9 +97,10 @@ export default function RegisterScreen({ onPressLogin, onPressBack, onRegisterSu
           </Text>
         </View>
 
-        <View style={styles.formContainer}>
+        {/* Form Card Container */}
+        <View style={styles.formCard}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nama</Text>
+            <Text style={styles.label}>Nama Lengkap</Text>
             <TextInput
               style={styles.input}
               placeholder="Budi Santoso"
@@ -125,11 +157,17 @@ export default function RegisterScreen({ onPressLogin, onPressBack, onRegisterSu
             </View>
           </View>
 
-          <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-            <Text style={styles.registerButtonText}>Daftar</Text>
+          <TouchableOpacity 
+            style={[styles.registerButton, loading && { opacity: 0.7 }]} 
+            onPress={handleRegister}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.registerButtonText}>{loading ? 'Memproses...' : 'Daftar'}</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Footer Login Link */}
         <View style={styles.footerContainer}>
           <Text style={styles.footerText}>Sudah punya akun? </Text>
           <TouchableOpacity onPress={onPressLogin}>
@@ -142,25 +180,130 @@ export default function RegisterScreen({ onPressLogin, onPressBack, onRegisterSu
   );
 }
 
-// (Bagian styles biarkan tetap sama)
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF' },
-  scrollContent: { padding: 24, flexGrow: 1, justifyContent: 'center' },
-  headerContainer: { alignItems: 'center', marginBottom: 24 },
-  logoCircle: { width: 65, height: 65, borderRadius: 32.5, backgroundColor: '#F3F9F1', justifyContent: 'center', alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: '#E2EFE0' },
-  logoEmoji: { fontSize: 28 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#1B5E20', marginBottom: 6 },
-  subtitle: { fontSize: 13, color: '#666666', textAlign: 'center' },
-  formContainer: { width: '100%' },
-  inputGroup: { marginBottom: 14 },
-  label: { fontSize: 12, fontWeight: '600', color: '#2E7D32', marginBottom: 6 },
-  input: { backgroundColor: '#F9FBF9', borderWidth: 1, borderColor: '#E2EFE0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: '#1E1E1E' },
-  passwordContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FBF9', borderWidth: 1, borderColor: '#E2EFE0', borderRadius: 12, paddingHorizontal: 14 },
-  passwordInput: { flex: 1, paddingVertical: 12, fontSize: 14, color: '#1E1E1E' },
-  eyeIcon: { fontSize: 16 },
-  registerButton: { backgroundColor: '#81C784', borderRadius: 25, paddingVertical: 14, alignItems: 'center', marginTop: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
-  registerButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
-  footerContainer: { flexDirection: 'row', justifyContent: 'center', marginTop: 24 },
-  footerText: { fontSize: 13, color: '#666666' },
-  loginLink: { fontSize: 13, color: '#2E7D32', fontWeight: 'bold', textDecorationLine: 'underline' },
+  container: { 
+    flex: 1, 
+    backgroundColor: BG_COLOR 
+  },
+  scrollContent: { 
+    padding: 24, 
+    flexGrow: 1, 
+    justifyContent: 'center' 
+  },
+  headerContainer: { 
+    alignItems: 'center', 
+    marginBottom: 20 
+  },
+  logoCircle: { 
+    width: 70, 
+    height: 70, 
+    borderRadius: 35, 
+    backgroundColor: '#FFFFFF', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginBottom: 14, 
+    borderWidth: 1, 
+    borderColor: '#E2EFE0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  logoEmoji: { 
+    fontSize: 32 
+  },
+  title: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    color: GREEN, 
+    marginBottom: 6 
+  },
+  subtitle: { 
+    fontSize: 13, 
+    color: '#666666', 
+    textAlign: 'center' 
+  },
+  formCard: { 
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  inputGroup: { 
+    marginBottom: 14 
+  },
+  label: { 
+    fontSize: 12, 
+    fontWeight: '600', 
+    color: LIGHT_GREEN, 
+    marginBottom: 6 
+  },
+  input: { 
+    backgroundColor: '#F9FBF9', 
+    borderWidth: 1, 
+    borderColor: '#E2EFE0', 
+    borderRadius: 12, 
+    paddingHorizontal: 14, 
+    paddingVertical: 12, 
+    fontSize: 14, 
+    color: '#1E1E1E' 
+  },
+  passwordContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#F9FBF9', 
+    borderWidth: 1, 
+    borderColor: '#E2EFE0', 
+    borderRadius: 12, 
+    paddingHorizontal: 14 
+  },
+  passwordInput: { 
+    flex: 1, 
+    paddingVertical: 12, 
+    fontSize: 14, 
+    color: '#1E1E1E' 
+  },
+  eyeIcon: { 
+    fontSize: 16 
+  },
+  registerButton: { 
+    backgroundColor: GREEN, 
+    height: 52,
+    borderRadius: 26, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginTop: 10, 
+    shadowColor: GREEN, 
+    shadowOffset: { width: 0, height: 4 }, 
+    shadowOpacity: 0.2, 
+    shadowRadius: 6, 
+    elevation: 3 
+  },
+  registerButtonText: { 
+    color: '#FFF', 
+    fontSize: 15, 
+    fontWeight: 'bold' 
+  },
+  footerContainer: { 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    marginTop: 20 
+  },
+  footerText: { 
+    fontSize: 13, 
+    color: '#888888' 
+  },
+  loginLink: { 
+    fontSize: 13, 
+    color: LIGHT_GREEN, 
+    fontWeight: 'bold' 
+  },
 });

@@ -8,27 +8,28 @@ import {
   View
 } from 'react-native';
 
-// 1. Definisikan tipe props di sini
 interface OnboardingScreenProps {
   onPressStart?: () => void;
   onPressLogin?: () => void;
 }
 
-// 2. Terapkan interface pada parameter fungsi
+const GREEN = '#1B5E20';
+const LIGHT_GREEN = '#2E7D32';
+const BG_COLOR = '#F3F9F1';
+
 export default function OnboardingScreen({ onPressStart, onPressLogin }: OnboardingScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         
-        <View style={styles.illustrationContainer}>
-  <View style={styles.earthCircle}>
-    <Image 
-      source={require('../../assets/images/frame1/Sementara.png')} // Ganti dengan path gambar Anda
-      style={styles.earthImage}
-      resizeMode="contain"
-    />
-  </View>
-</View>
+        <View style={styles.imageBox}>
+          <Image 
+            source={require('../../assets/images/frame1/Sementara.png')} 
+            style={styles.image}
+            resizeMode="contain"
+          />
+        </View>
+
         <View style={styles.textContainer}>
           <Text style={styles.appName}>Upcycling DIY</Text>
           <Text style={styles.headline}>Ubah Barang Bekas Jadi Barang Berkelas</Text>
@@ -38,7 +39,7 @@ export default function OnboardingScreen({ onPressStart, onPressLogin }: Onboard
         </View>
 
         <View style={styles.actionContainer}>
-          <TouchableOpacity style={styles.primaryButton} onPress={onPressStart}>
+          <TouchableOpacity style={styles.primaryButton} onPress={onPressStart} activeOpacity={0.8}>
             <Text style={styles.primaryButtonText}>Mulai Sekarang</Text>
           </TouchableOpacity>
 
@@ -55,85 +56,84 @@ export default function OnboardingScreen({ onPressStart, onPressLogin }: Onboard
   );
 }
 
-// (Bagian styles biarkan tetap sama seperti sebelumnya)
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: BG_COLOR,
   },
   content: {
     flex: 1,
     padding: 24,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-  },
-  illustrationContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
   },
-  earthCircle: {
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: '#F3F9F1',
+  imageBox: {
+    width: '100%',
+    height: 280,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 30,
     borderWidth: 1,
-    borderColor: '#E2EFE0',
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    padding: 20,
   },
-  earthImage: {
-    width: '80%',  // Atur persentase sesuai keinginan agar ada padding manis
+  image: {
+    width: '80%',
     height: '80%',
   },
   textContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 30,
   },
   appName: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#1B5E20',
-    marginBottom: 12,
+    color: GREEN,
+    marginBottom: 8,
   },
   headline: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: LIGHT_GREEN,
     textAlign: 'center',
     marginBottom: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
   },
   description: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#666666',
     textAlign: 'center',
-    paddingHorizontal: 30,
-    lineHeight: 18,
+    paddingHorizontal: 20,
+    lineHeight: 22,
   },
   actionContainer: {
     width: '100%',
     alignItems: 'center',
-    marginBottom: 150,
   },
   primaryButton: {
-    backgroundColor: '#81C784',
+    backgroundColor: GREEN,
     width: '100%',
-    borderRadius: 28,
-    paddingVertical: 16,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowColor: GREEN,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   primaryButtonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
   },
   footerRow: {
@@ -142,12 +142,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
-    color: '#666666',
+    color: '#888888',
   },
   loginLink: {
     fontSize: 13,
-    color: '#2E7D32',
+    color: LIGHT_GREEN,
     fontWeight: 'bold',
-    textDecorationLine: 'underline',
   },
 });

@@ -14,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 interface HomeScreenProps {
   onProfilePress?: () => void;
+  onLogoutSuccess?: () => void;
+  onCategoryPress?: (categoryName: string) => void; // <-- Prop untuk pindah halaman kategori
 }
 
 interface CategoryItem {
@@ -92,6 +94,18 @@ const INSPIRATIONS: InspirationItem[] = [
   },
   {
     id: '4',
+    title: 'Organizer Desk dari Kardus',
+    rating: '4.5',
+    image: require('../../assets/images/frame1/inspirasi.png'),
+  },
+  {
+    id: '5',
+    title: 'Organizer Desk dari Kardus',
+    rating: '4.5',
+    image: require('../../assets/images/frame1/inspirasi.png'),
+  },
+  {
+    id: '6',
     title: 'Organizer Desk dari Kardus',
     rating: '4.5',
     image: require('../../assets/images/frame1/inspirasi.png'),
@@ -215,7 +229,8 @@ function SectionHeader({
   );
 }
 
-function CategoryGrid() {
+// 1. Tambahkan parameter onCategoryPress di sini
+function CategoryGrid({ onCategoryPress }: { onCategoryPress?: (categoryName: string) => void }) {
   return (
     <View style={styles.gridContainer}>
       {CATEGORIES.map((item) => (
@@ -223,13 +238,18 @@ function CategoryGrid() {
           key={item.id}
           style={styles.categoryCard}
           activeOpacity={0.8}
+          // 2. Panggil onCategoryPress dan kirim judul item (misal: "Kardus")
+          onPress={() => {
+            if (onCategoryPress) {
+              onCategoryPress(item.title);
+            }
+          }}
         >
-          {/* Lingkaran: overflow hidden agar gambar ter-crop mengikuti bentuk bulat */}
           <View style={[styles.categoryCircle, { backgroundColor: item.bgColor }]}>
             <Image
               source={item.image}
               style={styles.categoryImage}
-              resizeMode="cover" // Opsi B: gambar memenuhi seluruh lingkaran
+              resizeMode="cover"
             />
           </View>
           <Text style={styles.categoryLabel}>{item.title}</Text>
@@ -276,24 +296,16 @@ function InspirationCard({ item }: { item: InspirationItem }) {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-export default function HomeScreen({ onProfilePress }: HomeScreenProps) {
+export default function HomeScreen({ onProfilePress, onCategoryPress }: HomeScreenProps) {
   return (
-    <ScrollView
-      style={styles.scrollView}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}
-    >
-      {/* 1. Header */}
+    <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
       <Header onProfilePress={onProfilePress} />
-
-      {/* 2. Weekly Challenge Banner */}
       <WeeklyChallengeBanner />
 
-      {/* 3. Kategori */}
       <SectionHeader icon="🌿" title="Punya Apa Hari Ini?" />
-      <CategoryGrid />
+      {/* Teruskan onCategoryPress ke CategoryGrid di sini */}
+      <CategoryGrid onCategoryPress={onCategoryPress} />
 
-      {/* 4. Inspirasi Populer */}
       <SectionHeader icon="✨" title="Inspirasi Populer" />
       <FlatList
         data={INSPIRATIONS}
@@ -330,6 +342,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    paddingTop: 45,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -431,16 +444,16 @@ const styles = StyleSheet.create({
 
   // ── Banner ────────────────────────────────────────────────────────────────
   bannerContainer: {
-  backgroundColor: '#176329',
-  borderRadius: 22,
-  paddingHorizontal: 18,
-  paddingTop: 16,
-  paddingBottom: 14,
-  marginBottom: 22,
-  overflow: 'hidden',
-  position: 'relative',
-  height: 150,   // ← tambahkan, ubah angkanya sesuai selera
-},
+    backgroundColor: '#176329',
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 14,
+    marginBottom: 22,
+    overflow: 'hidden',
+    position: 'relative',
+    height: 150,
+  },
   bannerDecorCircle1: {
     position: 'absolute',
     width: 90,
@@ -483,11 +496,11 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.45)',
   },
   bannerContentRow: {
-  flex: 1,   // ← tambahkan agar mengisi tinggi banner
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-},
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   bannerTextSide: {
     flex: 1,
     paddingRight: 6,
@@ -595,7 +608,6 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   categoryCard: {
-    // 3 kolom: (100% - 2 gap) / 3
     width: '31%',
     alignItems: 'center',
     marginBottom: 14,
@@ -604,13 +616,13 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    overflow: 'hidden', // ← Opsi B: potong gambar mengikuti lingkaran
+    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 7,
   },
   categoryImage: {
-    width: '100%', // ← Opsi B: penuhi seluruh lingkaran
+    width: '100%',
     height: '100%',
   },
   categoryLabel: {
@@ -706,7 +718,6 @@ const styles = StyleSheet.create({
 
   // ── Spacer ────────────────────────────────────────────────────────────────
   bottomSpacer: {
-    // Pastikan konten tidak tertutup floating bottom nav (~70px) + margin aman
     height: 120,
   },
 });

@@ -6,31 +6,56 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  Alert
 } from 'react-native';
+import { supabase } from '../services/supabase';
 
-// 1. Interface props sudah benar
 interface LoginScreenProps {
   onPressRegister?: () => void;
   onPressBack?: () => void;
   onLoginSuccess?: () => void; 
 }
 
-// 2. TERAPKAN onLoginSuccess PADA PARAMETER KOMPONEN
+const GREEN = '#1B5E20';
+const LIGHT_GREEN = '#2E7D32';
+const BG_COLOR = '#F3F9F1';
+
 export default function LoginScreen({ onPressRegister, onPressBack, onLoginSuccess }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    console.log('Email:', email);
-    console.log('Password:', password);
-    
-    // 3. Panggil fungsi ini agar berpindah ke halaman Dashboard/Home
-    if (onLoginSuccess) {
-      onLoginSuccess();
-    } else {
-      alert('Tombol Login diklik!');
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Peringatan", "Email dan password harus diisi!");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Verifikasi kredensial langsung ke Supabase Auth
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password,
+      });
+
+      if (error) {
+        Alert.alert("Gagal Masuk", error.message);
+        setLoading(false);
+        return;
+      }
+
+      // Jika berhasil diverifikasi oleh Supabase, panggil onLoginSuccess
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      }
+    } catch (err: any) {
+      Alert.alert("Terjadi Kesalahan", err.message || "Gagal melakukan login.");
+    } finally {
+      setLoading(false);
     }
   };
 

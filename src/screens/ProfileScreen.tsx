@@ -8,9 +8,11 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../services/supabase'; // Pastikan path import supabase sudah benar
 
 interface ProfileScreenProps {
   onBack?: () => void;
+  onLogoutSuccess?: () => void; // 1. Tambahkan prop onLogoutSuccess di sini
 }
 
 const MENU_ITEMS = [
@@ -22,7 +24,26 @@ const MENU_ITEMS = [
   { icon: 'information-circle-outline', label: 'Tentang Aplikasi', color: '#8B5CF6' },
 ];
 
-export default function ProfileScreen({ onBack }: ProfileScreenProps) {
+export default function ProfileScreen({ onBack, onLogoutSuccess }: ProfileScreenProps) {
+  
+  // 2. Buat fungsi untuk menangani proses Keluar (Logout)
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Gagal melakukan logout:", error.message);
+        return;
+      }
+      
+      // Jika berhasil sign out, jalankan callback onLogoutSuccess untuk kembali ke onboarding
+      if (onLogoutSuccess) {
+        onLogoutSuccess();
+      }
+    } catch (err) {
+      console.error("Terjadi kesalahan saat logout:", err);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header with back button */}
@@ -101,8 +122,12 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
           ))}
         </View>
 
-        {/* Logout */}
-        <TouchableOpacity style={styles.logoutButton}>
+        {/* Logout Button */}
+        <TouchableOpacity 
+          style={styles.logoutButton} 
+          onPress={handleLogout} // 3. Hubungkan ke fungsi handleLogout
+          activeOpacity={0.8}
+        >
           <Ionicons name="log-out-outline" size={20} color="#EF4444" />
           <Text style={styles.logoutText}>Keluar</Text>
         </TouchableOpacity>
@@ -122,6 +147,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    marginTop: 45, // <-- Tambahkan baris ini untuk menurunkan posisi header dari atas
   },
   backButton: {
     width: 40,
@@ -135,6 +161,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.07,
     shadowRadius: 6,
     elevation: 2,
+    
   },
   topBarTitle: {
     fontSize: 18,

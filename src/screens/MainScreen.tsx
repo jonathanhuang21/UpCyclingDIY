@@ -24,26 +24,36 @@ interface NavItemConfig {
   iconActive: keyof typeof Ionicons.glyphMap;
 }
 
+interface MainScreenProps {
+  onLogoutSuccess?: () => void;
+  onCategoryPress?: (categoryName: string) => void;
+}
+
 const NAV_ITEMS: NavItemConfig[] = [
   { id: 'home', label: 'Beranda', icon: 'home-outline', iconActive: 'home' },
   { id: 'search', label: 'Cari', icon: 'search-outline', iconActive: 'search' },
   { id: 'creations', label: 'Kreasi Saya', icon: 'images-outline', iconActive: 'images' },
-  { id: 'showcase', label: 'Showcase', icon: 'storefront-outline', iconActive: 'storefront' },
 ];
 
-export default function MainScreen() {
+export default function MainScreen({ onLogoutSuccess, onCategoryPress }: MainScreenProps) {
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [showProfile, setShowProfile] = useState(false);
 
   const renderContent = () => {
     if (showProfile) {
-      return <ProfileScreen onBack={() => setShowProfile(false)} />;
+      return (
+        <ProfileScreen 
+          onBack={() => setShowProfile(false)} 
+          onLogoutSuccess={onLogoutSuccess} 
+        />
+      );
     }
     switch (activeTab) {
       case 'home':
         return (
           <HomeScreen
             onProfilePress={() => setShowProfile(true)}
+            onCategoryPress={onCategoryPress} // <-- Teruskan onCategoryPress ke HomeScreen di sini
           />
         );
       case 'search':
@@ -59,12 +69,10 @@ export default function MainScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Main content area */}
       <View style={styles.contentArea}>
         {renderContent()}
       </View>
 
-      {/* Floating Bottom Navigation — hidden when Profile is open */}
       {!showProfile && (
         <View style={styles.bottomNavWrapper}>
           <View style={styles.bottomNav}>
@@ -114,12 +122,10 @@ const styles = StyleSheet.create({
     bottom: Platform.OS === 'android' ? 16 : 28,
     left: 20,
     right: 20,
-    // Shadow for iOS
     shadowColor: '#1A3C1A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 20,
-    // Elevation for Android
     elevation: 14,
   },
   bottomNav: {
