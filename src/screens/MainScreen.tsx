@@ -14,8 +14,10 @@ import SearchScreen from './SearchScreen';
 import MyCreationsScreen from './MyCreationsScreen';
 import ShowcaseScreen from './ShowcaseScreen';
 import ProfileScreen from './ProfileScreen';
+import DetailGuideScreen from './DetailGuideScreen';
 
 type TabType = 'home' | 'search' | 'creations' | 'showcase';
+type SubScreenType = 'none' | 'detailGuide';
 
 interface NavItemConfig {
   id: TabType;
@@ -38,6 +40,19 @@ const NAV_ITEMS: NavItemConfig[] = [
 export default function MainScreen({ onLogoutSuccess, onCategoryPress }: MainScreenProps) {
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [showProfile, setShowProfile] = useState(false);
+  const [subScreen, setSubScreen] = useState<SubScreenType>('none');
+
+  // Jika ada sub-screen yang aktif (dari tab Search), tampilkan langsung
+  if (subScreen === 'detailGuide') {
+    return (
+      <DetailGuideScreen
+        onBack={() => setSubScreen('none')}
+        onStart={() => {
+          console.log('Mulai membuat panduan diklik dari Search');
+        }}
+      />
+    );
+  }
 
   const renderContent = () => {
     if (showProfile) {
@@ -57,7 +72,7 @@ export default function MainScreen({ onLogoutSuccess, onCategoryPress }: MainScr
           />
         );
       case 'search':
-        return <SearchScreen />;
+        return <SearchScreen onOpenGuide={() => setSubScreen('detailGuide')} />;
       case 'creations':
         return <MyCreationsScreen />;
       case 'showcase':
