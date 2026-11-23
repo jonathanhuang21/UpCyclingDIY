@@ -8,30 +8,37 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { guide, guideThumbnail, loadFavorites, saveFavorites } from '../data/guides';
+import { loadUserFavorites, saveUserFavorites } from '../services/favoritesService';
+import { CategoryProjectItem, getProjectById } from '../data/categoriesData';
 
 type Props = {
+  project?: CategoryProjectItem | null;
   onBack: () => void;
   onStart: () => void;
 };
 
 const tabs = ['Alat & Bahan', 'Langkah Kerja', 'Komentar'];
-const FAV_ID = 'detail';
 
-export default function DetailGuideScreen({ onBack, onStart }: Props) {
+export default function DetailGuideScreen({ project, onBack, onStart }: Props) {
+  const activeProject = project ?? getProjectById();
+  const favId = activeProject.id;
+
   const [tab, setTab] = useState(tabs[0]);
-  const [checked, setChecked] = useState<boolean[]>(guide.materials.map((_, i) => i === 0));
+  const [checked, setChecked] = useState<boolean[]>(
+    activeProject.materials.map((_, i) => i === 0)
+  );
   const [fav, setFav] = useState(false);
 
   useEffect(() => {
-    loadFavorites().then((f) => setFav(f.includes(FAV_ID)));
-  }, []);
+    setChecked(activeProject.materials.map((_, i) => i === 0));
+    loadUserFavorites().then((f) => setFav(f.includes(favId)));
+  }, [activeProject.id, favId]);
 
   const toggleFav = async () => {
-    const list = await loadFavorites();
-    const next = list.includes(FAV_ID) ? list.filter((f) => f !== FAV_ID) : [...list, FAV_ID];
-    setFav(next.includes(FAV_ID));
-    saveFavorites(next);
+    const list = await loadUserFavorites();
+    const next = list.includes(favId) ? list.filter((f) => f !== favId) : [...list, favId];
+    setFav(next.includes(favId));
+    await saveUserFavorites(next);
   };
 
   const toggleCheck = (i: number) => setChecked(checked.map((c, idx) => (idx === i ? !c : c)));
@@ -47,21 +54,21 @@ export default function DetailGuideScreen({ onBack, onStart }: Props) {
           <View style={styles.backButton} />
         </View>
 
-        <Image source={guideThumbnail} style={styles.heroImage} resizeMode="cover" />
+        <Image source={activeProject.image} style={styles.heroImage} resizeMode="cover" />
 
-        <Text style={styles.title}>{guide.title}</Text>
+        <Text style={styles.title}>{activeProject.title}</Text>
         <Text style={styles.meta}>
-          ⏰ {guide.duration}
+          ⏰ {activeProject.duration}
         </Text>
         <Text style={styles.meta}>
-          <Text style={styles.stars}>★★★★☆</Text> {guide.rating} {guide.reviews}
+          <Text style={styles.stars}>★★★★☆</Text> {activeProject.rating} {activeProject.reviews}
         </Text>
 
         <TouchableOpacity style={styles.favButton} onPress={toggleFav}>
           <Text style={styles.favIcon}>{fav ? '♥' : '♡'}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.about}>{guide.about}</Text>
+        <Text style={styles.about}>{activeProject.about}</Text>
 
         <View style={styles.tabRow}>
           {tabs.map((t) => (
@@ -76,8 +83,8 @@ export default function DetailGuideScreen({ onBack, onStart }: Props) {
         </View>
 
         {tab === 'Alat & Bahan' &&
-          guide.materials.map((m, i) => (
-            <TouchableOpacity key={m} style={styles.checkRow} onPress={() => toggleCheck(i)}>
+          activeProject.materials.map((m, i) => (
+            <TouchableOpacity key={`${m}-${i}`} style={styles.checkRow} onPress={() => toggleCheck(i)}>
               <View style={[styles.checkbox, checked[i] && styles.checkboxOn]}>
                 {checked[i] && <Text style={styles.checkMark}>✓</Text>}
               </View>
@@ -86,8 +93,8 @@ export default function DetailGuideScreen({ onBack, onStart }: Props) {
           ))}
 
         {tab === 'Langkah Kerja' &&
-          guide.steps.map((s, i) => (
-            <Text key={s.title} style={styles.stepItem}>
+          activeProject.steps.map((s, i) => (
+            <Text key={`${s.title}-${i}`} style={styles.stepItem}>
               {i + 1}. {s.title}
             </Text>
           ))}
@@ -103,14 +110,14 @@ export default function DetailGuideScreen({ onBack, onStart }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#F3F9F1' // Disamakan dengan HomeScreen & CategoryScreen
+  container: {
+    flex: 1,
+    backgroundColor: '#F3F9F1',
   },
-  scrollContent: { 
-    padding: 16, 
-    paddingBottom: 100, 
-    alignItems: 'center' 
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
+    alignItems: 'center',
   },
   header: {
     alignSelf: 'stretch',
@@ -120,7 +127,7 @@ const styles = StyleSheet.create({
     marginTop: 40,
     marginBottom: 16,
   },
-  backButton: { 
+  backButton: {
     width: 40,
     height: 40,
     backgroundColor: '#FFFFFF',
@@ -133,36 +140,36 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  backIcon: { 
-    fontSize: 20, 
-    fontWeight: 'bold', 
-    color: '#1A3C1A' 
+  backIcon: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1A3C1A',
   },
-  headerTitle: { 
-    fontSize: 18, 
-    fontWeight: '800', 
-    color: '#1A3C1A' 
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1A3C1A',
   },
-  heroImage: { 
-    width: '100%', 
-    height: 200, 
-    borderRadius: 18, 
-    marginBottom: 16 
+  heroImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 18,
+    marginBottom: 16,
   },
-  title: { 
-    fontSize: 18, 
-    fontWeight: '800', 
-    color: '#1A3C1A', 
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1A3C1A',
     textAlign: 'center',
     marginBottom: 4,
   },
-  meta: { 
-    fontSize: 12, 
-    color: '#6A8A6A', 
-    marginTop: 2 
+  meta: {
+    fontSize: 12,
+    color: '#6A8A6A',
+    marginTop: 2,
   },
-  stars: { 
-    color: '#F59E0B' 
+  stars: {
+    color: '#F59E0B',
   },
   favButton: {
     width: 36,
@@ -178,15 +185,15 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  favIcon: { 
-    fontSize: 16, 
-    color: '#EF4444' 
+  favIcon: {
+    fontSize: 16,
+    color: '#EF4444',
   },
-  about: { 
-    fontSize: 13, 
-    fontWeight: '600', 
-    color: '#4A6B4A', 
-    textAlign: 'center', 
+  about: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4A6B4A',
+    textAlign: 'center',
     marginBottom: 16,
     paddingHorizontal: 10,
     lineHeight: 18,
@@ -203,27 +210,27 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  tab: { 
-    paddingHorizontal: 16, 
-    paddingVertical: 8, 
-    borderRadius: 18 
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 18,
   },
-  tabActive: { 
-    backgroundColor: '#176329' 
+  tabActive: {
+    backgroundColor: '#176329',
   },
-  tabText: { 
-    fontSize: 12.5, 
+  tabText: {
+    fontSize: 12.5,
     color: '#6A8A6A',
     fontWeight: '600',
   },
-  tabTextActive: { 
-    color: '#FFFFFF', 
-    fontWeight: '700' 
+  tabTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
-  checkRow: { 
-    alignSelf: 'stretch', 
-    flexDirection: 'row', 
-    alignItems: 'center', 
+  checkRow: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
     padding: 12,
     borderRadius: 12,
@@ -245,25 +252,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
   },
-  checkboxOn: { 
-    backgroundColor: '#176329', 
-    borderColor: '#176329' 
+  checkboxOn: {
+    backgroundColor: '#176329',
+    borderColor: '#176329',
   },
-  checkMark: { 
-    color: '#FFF', 
-    fontSize: 12, 
-    fontWeight: 'bold' 
+  checkMark: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
-  checkLabel: { 
-    fontSize: 13, 
+  checkLabel: {
+    fontSize: 13,
     color: '#1A3C1A',
     fontWeight: '500',
     flex: 1,
   },
-  stepItem: { 
-    alignSelf: 'stretch', 
-    fontSize: 13, 
-    color: '#1A3C1A', 
+  stepItem: {
+    alignSelf: 'stretch',
+    fontSize: 13,
+    color: '#1A3C1A',
     marginBottom: 12,
     backgroundColor: '#FFFFFF',
     padding: 14,
@@ -274,9 +281,9 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  empty: { 
-    fontSize: 13, 
-    color: '#6A8A6A', 
+  empty: {
+    fontSize: 13,
+    color: '#6A8A6A',
     marginTop: 20,
     textAlign: 'center',
   },
@@ -296,9 +303,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  startText: { 
-    color: '#FFFFFF', 
-    fontSize: 15, 
-    fontWeight: '700' 
+  startText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

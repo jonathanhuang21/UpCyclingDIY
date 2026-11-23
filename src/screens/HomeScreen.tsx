@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FlatList,
   Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,13 +11,22 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../services/supabase';
+import { getUserCreations } from '../services/creationsService';
+import {
+  CategoryProjectItem,
+  getProjectById,
+} from '../data/categoriesData';
+import { loadUserFavorites, saveUserFavorites } from '../services/favoritesService';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface HomeScreenProps {
   onProfilePress?: () => void;
   onLogoutSuccess?: () => void;
-  onCategoryPress?: (categoryName: string) => void; // <-- Prop untuk pindah halaman kategori
+  onCategoryPress?: (categoryName: string) => void;
+  onSelectProject?: (project: CategoryProjectItem) => void;
+  onSeeAllPress?: () => void;
 }
 
 interface CategoryItem {
@@ -25,11 +36,17 @@ interface CategoryItem {
   bgColor: string;
 }
 
-interface InspirationItem {
+interface InspirationCardData {
   id: string;
+  project: CategoryProjectItem;
+}
+
+interface ChallengeSlide {
+  id: string;
+  chip: string;
   title: string;
-  rating: string;
   image: ReturnType<typeof require>;
+  onPress?: () => void;
 }
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -73,48 +90,59 @@ const CATEGORIES: CategoryItem[] = [
   },
 ];
 
-const INSPIRATIONS: InspirationItem[] = [
+const POPULAR_INSPIRATIONS: InspirationCardData[] = [
+  { id: 'insp-1', project: getProjectById('kardus-1') },
+  { id: 'insp-2', project: getProjectById('plastik-1') },
+  { id: 'insp-3', project: getProjectById('pakaian-1') },
+  { id: 'insp-4', project: getProjectById('kaca-1') },
+  { id: 'insp-5', project: getProjectById('kertas-1') },
+  { id: 'insp-6', project: getProjectById('kaleng-1') },
+];
+
+const CHALLENGE_SLIDES: ChallengeSlide[] = [
   {
     id: '1',
-    title: 'Organizer Desk dari Kardus',
-    rating: '4.5',
-    image: require('../../assets/images/frame1/inspirasi.png'),
+    chip: 'Weekly Challenge',
+    title: 'Kreasi dari Plastik',
+    image: require('../../assets/images/frame1/banner.png'),
+    onPress: undefined,
   },
   {
     id: '2',
-    title: 'Organizer Desk dari Kardus',
-    rating: '4.5',
-    image: require('../../assets/images/frame1/inspirasi.png'),
+    chip: 'Weekly Challenge',
+    title: 'Sulap Kardus Bekas',
+    image: require('../../assets/images/frame1/banner.png'),
   },
   {
     id: '3',
-    title: 'Organizer Desk dari Kardus',
-    rating: '4.5',
-    image: require('../../assets/images/frame1/inspirasi.png'),
-  },
-  {
-    id: '4',
-    title: 'Organizer Desk dari Kardus',
-    rating: '4.5',
-    image: require('../../assets/images/frame1/inspirasi.png'),
-  },
-  {
-    id: '5',
-    title: 'Organizer Desk dari Kardus',
-    rating: '4.5',
-    image: require('../../assets/images/frame1/inspirasi.png'),
-  },
-  {
-    id: '6',
-    title: 'Organizer Desk dari Kardus',
-    rating: '4.5',
-    image: require('../../assets/images/frame1/inspirasi.png'),
+    chip: 'Weekly Challenge',
+    title: 'Dekorasi Kaleng Unik',
+    image: require('../../assets/images/frame1/banner.png'),
   },
 ];
 
+const resolveUserName = (user: any): string => {
+  return (
+    user?.user_metadata?.username ||
+    user?.user_metadata?.display_name ||
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    user?.email?.split('@')[0] ||
+    'Kreator'
+  );
+};
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function Header({ onProfilePress }: { onProfilePress?: () => void }) {
+function Header({
+  userName,
+  totalExp,
+  onProfilePress,
+}: {
+  userName: string;
+  totalExp: number;
+  onProfilePress?: () => void;
+}) {
   return (
     <View style={styles.headerContainer}>
       {/* Left: avatar + greeting */}
@@ -123,7 +151,9 @@ function Header({ onProfilePress }: { onProfilePress?: () => void }) {
           <Text style={styles.smallAvatarEmoji}>👨🏽‍🦱</Text>
         </View>
         <View>
-          <Text style={styles.greetingTitle}>Halo, Budi!</Text>
+          <Text style={styles.greetingTitle} numberOfLines={1}>
+            Halo, {userName}!
+          </Text>
           <Text style={styles.greetingSubtitle}>Ayo Kreasi hari ini! 🤍</Text>
         </View>
       </View>
@@ -133,7 +163,7 @@ function Header({ onProfilePress }: { onProfilePress?: () => void }) {
         {/* XP Badge */}
         <View style={styles.xpBadge}>
           <Ionicons name="star" size={13} color="#FFB800" />
-          <Text style={styles.xpText}>100 XP</Text>
+          <Text style={styles.xpText}>{totalExp} XP</Text>
         </View>
 
         {/* Notification bell */}
@@ -157,50 +187,97 @@ function Header({ onProfilePress }: { onProfilePress?: () => void }) {
   );
 }
 
-function WeeklyChallengeBanner() {
+function WeeklyChallengeBanner({
+  onCategoryPress,
+}: {
+  onCategoryPress?: (categoryName: string) => void;
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [bannerWidth, setBannerWidth] = useState(0);
+
+  const handleMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!bannerWidth) return;
+    const offsetX = e.nativeEvent.contentOffset.x;
+    const nextIndex = Math.round(offsetX / bannerWidth);
+    setActiveIndex(Math.max(0, Math.min(nextIndex, CHALLENGE_SLIDES.length - 1)));
+  };
+
   return (
-    <View style={styles.bannerContainer}>
-      {/* Background decorative circles */}
-      <View style={styles.bannerDecorCircle1} />
-      <View style={styles.bannerDecorCircle2} />
-      <View style={styles.bannerDecorCircle3} />
+    <View
+      style={styles.bannerContainer}
+      onLayout={(e) => setBannerWidth(e.nativeEvent.layout.width)}
+    >
+      <FlatList
+        data={CHALLENGE_SLIDES}
+        horizontal
+        pagingEnabled
+        nestedScrollEnabled
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.id}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        scrollEventThrottle={16}
+        renderItem={({ item }) => (
+          <View style={[styles.bannerSlide, bannerWidth ? { width: bannerWidth } : null]}>
+            {/* Background decorative circles */}
+            <View style={styles.bannerDecorCircle1} />
+            <View style={styles.bannerDecorCircle2} />
+            <View style={styles.bannerDecorCircle3} />
 
-      {/* Stars decorative */}
-      <Text style={styles.bannerDecorStar1}>✦</Text>
-      <Text style={styles.bannerDecorStar2}>✦</Text>
+            {/* Stars decorative */}
+            <Text style={styles.bannerDecorStar1}>✦</Text>
+            <Text style={styles.bannerDecorStar2}>✦</Text>
 
-      {/* Content row */}
-      <View style={styles.bannerContentRow}>
-        {/* Text side */}
-        <View style={styles.bannerTextSide}>
-          {/* Chip label */}
-          <View style={styles.bannerChip}>
-            <Text style={styles.bannerChipText}>Weekly Challenge</Text>
+            {/* Content row */}
+            <View style={styles.bannerContentRow}>
+              {/* Text side */}
+              <View style={styles.bannerTextSide}>
+                {/* Chip label */}
+                <View style={styles.bannerChip}>
+                  <Text style={styles.bannerChipText}>{item.chip}</Text>
+                </View>
+
+                <Text style={styles.bannerTitle}>{item.title}</Text>
+
+                <TouchableOpacity
+                  style={styles.bannerButton}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    if (item.onPress) {
+                      item.onPress();
+                    } else if (onCategoryPress) {
+                      onCategoryPress('Botol Plastik');
+                    }
+                  }}
+                >
+                  <Text style={styles.bannerButtonText}>Ikut Sekarang</Text>
+                  <Ionicons name="chevron-forward" size={13} color="#2D7A3A" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Illustration side */}
+              <View style={styles.bannerIllustrationSide}>
+                <Image
+                  source={item.image}
+                  style={styles.bannerIllustrationImage}
+                  resizeMode="contain"
+                />
+              </View>
+            </View>
           </View>
-
-          <Text style={styles.bannerTitle}>Kreasi dari Plastik</Text>
-
-          <TouchableOpacity style={styles.bannerButton} activeOpacity={0.85}>
-            <Text style={styles.bannerButtonText}>Ikut Sekarang</Text>
-            <Ionicons name="chevron-forward" size={13} color="#2D7A3A" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Illustration side */}
-        <View style={styles.bannerIllustrationSide}>
-          <Image
-            source={require('../../assets/images/frame1/banner.png')}
-            style={styles.bannerIllustrationImage}
-            resizeMode="contain"
-          />
-        </View>
-      </View>
+        )}
+      />
 
       {/* Dot indicators */}
       <View style={styles.bannerDots}>
-        <View style={[styles.bannerDot, styles.bannerDotActive]} />
-        <View style={styles.bannerDot} />
-        <View style={styles.bannerDot} />
+        {CHALLENGE_SLIDES.map((slide, index) => (
+          <View
+            key={slide.id}
+            style={[
+              styles.bannerDot,
+              activeIndex === index && styles.bannerDotActive,
+            ]}
+          />
+        ))}
       </View>
     </View>
   );
@@ -229,7 +306,6 @@ function SectionHeader({
   );
 }
 
-// 1. Tambahkan parameter onCategoryPress di sini
 function CategoryGrid({ onCategoryPress }: { onCategoryPress?: (categoryName: string) => void }) {
   return (
     <View style={styles.gridContainer}>
@@ -238,7 +314,6 @@ function CategoryGrid({ onCategoryPress }: { onCategoryPress?: (categoryName: st
           key={item.id}
           style={styles.categoryCard}
           activeOpacity={0.8}
-          // 2. Panggil onCategoryPress dan kirim judul item (misal: "Kardus")
           onPress={() => {
             if (onCategoryPress) {
               onCategoryPress(item.title);
@@ -259,61 +334,187 @@ function CategoryGrid({ onCategoryPress }: { onCategoryPress?: (categoryName: st
   );
 }
 
-function InspirationCard({ item }: { item: InspirationItem }) {
+function InspirationCard({
+  item,
+  isFav,
+  onToggleFav,
+  onPressDetail,
+}: {
+  item: InspirationCardData;
+  isFav: boolean;
+  onToggleFav: () => void;
+  onPressDetail: () => void;
+}) {
   return (
-    <View style={styles.inspirationCard}>
+    <TouchableOpacity
+      style={styles.inspirationCard}
+      activeOpacity={0.9}
+      onPress={onPressDetail}
+    >
       {/* Image area */}
       <View style={styles.inspirationImageWrap}>
         <Image
-          source={item.image}
+          source={item.project.image}
           style={styles.inspirationImage}
           resizeMode="cover"
         />
         {/* Heart button */}
-        <TouchableOpacity style={styles.heartButton} activeOpacity={0.8}>
-          <Ionicons name="heart-outline" size={16} color="#888" />
+        <TouchableOpacity
+          style={styles.heartButton}
+          activeOpacity={0.8}
+          onPress={(e) => {
+            e.stopPropagation();
+            onToggleFav();
+          }}
+        >
+          <Ionicons
+            name={isFav ? 'heart' : 'heart-outline'}
+            size={16}
+            color={isFav ? '#EF4444' : '#888'}
+          />
         </TouchableOpacity>
       </View>
 
       {/* Info */}
       <Text style={styles.inspirationTitle} numberOfLines={2}>
-        {item.title}
+        {item.project.title}
       </Text>
 
       {/* Rating */}
       <View style={styles.ratingRow}>
         <Ionicons name="star" size={12} color="#FFB800" />
-        <Text style={styles.ratingText}>{item.rating}</Text>
+        <Text style={styles.ratingText}>{item.project.rating}</Text>
       </View>
 
       {/* Detail button */}
-      <TouchableOpacity style={styles.detailButton} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={styles.detailButton}
+        activeOpacity={0.85}
+        onPress={onPressDetail}
+      >
         <Text style={styles.detailButtonText}>Detail</Text>
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-export default function HomeScreen({ onProfilePress, onCategoryPress }: HomeScreenProps) {
-  return (
-    <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-      <Header onProfilePress={onProfilePress} />
-      <WeeklyChallengeBanner />
+export default function HomeScreen({
+  onProfilePress,
+  onCategoryPress,
+  onSelectProject,
+  onSeeAllPress,
+}: HomeScreenProps) {
+  const [userName, setUserName] = useState<string>('Kreator');
+  const [totalExp, setTotalExp] = useState<number>(0);
+  const [favs, setFavs] = useState<string[]>([]);
 
-      <SectionHeader icon="🌿" title="Punya Apa Hari Ini?" />
-      {/* Teruskan onCategoryPress ke CategoryGrid di sini */}
+  const handleToggleFav = (projectId: string) => {
+    setFavs((prev) => {
+      const next = prev.includes(projectId)
+        ? prev.filter((id) => id !== projectId)
+        : [...prev, projectId];
+      saveUserFavorites(next);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadUserData = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (isMounted && user) {
+        setUserName(resolveUserName(user));
+      }
+
+      const [creationsRes, userFavs] = await Promise.all([
+        getUserCreations(),
+        loadUserFavorites(),
+      ]);
+
+      if (!isMounted) return;
+
+      setFavs(userFavs);
+
+      if (!creationsRes.error) {
+        const sumExp = creationsRes.data.reduce(
+          (acc, item) => acc + (item.exp_earned || 0),
+          0
+        );
+        setTotalExp(sumExp);
+      } else {
+        setTotalExp(0);
+      }
+    };
+
+    loadUserData();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
+      if (session?.user) {
+        setUserName(resolveUserName(session.user));
+      } else {
+        setUserName('Kreator');
+      }
+      loadUserData();
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleSeeAll = () => {
+    if (onSeeAllPress) {
+      onSeeAllPress();
+    } else {
+      onCategoryPress?.('Kardus');
+    }
+  };
+
+  return (
+    <ScrollView
+      style={styles.scrollView}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
+    >
+      <Header userName={userName} totalExp={totalExp} onProfilePress={onProfilePress} />
+      <WeeklyChallengeBanner onCategoryPress={onCategoryPress} />
+
+      <SectionHeader
+        icon="🌿"
+        title="Punya Apa Hari Ini?"
+        onSeeAll={handleSeeAll}
+      />
       <CategoryGrid onCategoryPress={onCategoryPress} />
 
-      <SectionHeader icon="✨" title="Inspirasi Populer" />
+      <SectionHeader
+        icon="✨"
+        title="Inspirasi Populer"
+        onSeeAll={handleSeeAll}
+      />
       <FlatList
-        data={INSPIRATIONS}
+        data={POPULAR_INSPIRATIONS}
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.inspirationListContent}
-        renderItem={({ item }) => <InspirationCard item={item} />}
+        renderItem={({ item }) => (
+          <InspirationCard
+            item={item}
+            isFav={favs.includes(item.project.id)}
+            onToggleFav={() => handleToggleFav(item.project.id)}
+            onPressDetail={() => onSelectProject?.(item.project)}
+          />
+        )}
         style={styles.inspirationList}
         scrollEnabled={true}
       />
@@ -348,6 +549,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
+    marginRight: 8,
   },
   smallAvatarContainer: {
     width: 44,
@@ -365,6 +568,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: '#1A3C1A',
+    maxWidth: 150,
   },
   greetingSubtitle: {
     fontSize: 11.5,
@@ -446,13 +650,17 @@ const styles = StyleSheet.create({
   bannerContainer: {
     backgroundColor: '#176329',
     borderRadius: 22,
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 14,
     marginBottom: 22,
     overflow: 'hidden',
     position: 'relative',
-    height: 150,
+    height: 156,
+  },
+  bannerSlide: {
+    height: 156,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 24,
+    position: 'relative',
   },
   bannerDecorCircle1: {
     position: 'absolute',
@@ -524,7 +732,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     lineHeight: 25,
-    marginBottom: 25,
+    marginBottom: 14,
   },
   bannerButton: {
     flexDirection: 'row',
@@ -552,10 +760,13 @@ const styles = StyleSheet.create({
     height: 110,
   },
   bannerDots: {
+    position: 'absolute',
+    bottom: 9,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 12,
     gap: 5,
   },
   bannerDot: {

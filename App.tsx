@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from './src/services/supabase';
+import { CategoryProjectItem } from './src/data/categoriesData';
 import SplashScreen from './src/screens/SplashScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
@@ -9,7 +10,21 @@ import LoginScreen from './src/screens/LoginScreen';
 import MainScreen from './src/screens/MainScreen';
 import CategoryDetailScreen from './src/screens/CategoryScreen';
 import DetailGuideScreen from './src/screens/DetailGuideScreen';
-type ScreenType = 'splash' | 'onboarding' | 'register' | 'login' | 'main' | 'categoryDetail' | 'detailGuide'; // <-- 2. Tambahkan 'detailGuide'
+import TutorialScreen from './src/screens/TutorialScreen';
+import ProjectCompleteScreen from './src/screens/ProjectCompleteScreen';
+
+type ScreenType =
+  | 'splash'
+  | 'onboarding'
+  | 'register'
+  | 'login'
+  | 'main'
+  | 'categoryDetail'
+  | 'detailGuide'
+  | 'tutorial'
+  | 'projectComplete';
+
+type MainTabType = 'home' | 'search' | 'creations' | 'showcase';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -17,6 +32,13 @@ export default function App() {
   const [initializing, setInitializing] = useState(true);
   const [hasSession, setHasSession] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('Kreasi Kardus');
+  const [selectedProject, setSelectedProject] = useState<CategoryProjectItem | null>(null);
+  const [mainInitialTab, setMainInitialTab] = useState<MainTabType>('home');
+
+  const goToMyCreations = () => {
+    setMainInitialTab('creations');
+    setCurrentScreen('main');
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -63,7 +85,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       {showSplash ? (
-        <SplashScreen 
+        <SplashScreen
           onFinish={() => {
             setShowSplash(false);
             if (hasSession) {
@@ -71,59 +93,90 @@ export default function App() {
             } else {
               setCurrentScreen('onboarding');
             }
-          }} 
+          }}
         />
       ) : currentScreen === 'onboarding' ? (
-        <OnboardingScreen 
-          onPressStart={() => setCurrentScreen('register')} 
-          onPressLogin={() => setCurrentScreen('login')} 
+        <OnboardingScreen
+          onPressStart={() => setCurrentScreen('register')}
+          onPressLogin={() => setCurrentScreen('login')}
         />
       ) : currentScreen === 'register' ? (
-        <RegisterScreen 
-          onPressLogin={() => setCurrentScreen('login')} 
+        <RegisterScreen
+          onPressLogin={() => setCurrentScreen('login')}
           onPressBack={() => setCurrentScreen('onboarding')}
-          onRegisterSuccess={() => setCurrentScreen('login')} 
+          onRegisterSuccess={() => setCurrentScreen('login')}
         />
       ) : currentScreen === 'login' ? (
-        <LoginScreen 
-          onPressRegister={() => setCurrentScreen('register')} 
+        <LoginScreen
+          onPressRegister={() => setCurrentScreen('register')}
           onPressBack={() => setCurrentScreen('onboarding')}
           onLoginSuccess={() => {
             setHasSession(true);
             setCurrentScreen('main');
-          }} 
-        />
-      ) : currentScreen === 'main' ? (
-        <MainScreen 
-          onLogoutSuccess={() => {
-            setHasSession(false);
-            setCurrentScreen('onboarding');
-          }} 
-          onCategoryPress={(categoryName) => {
-            setSelectedCategory(`Kreasi ${categoryName}`);
-            setCurrentScreen('categoryDetail');
           }}
         />
+      ) : currentScreen === 'main' ? (
+        <MainScreen
+  initialTab={mainInitialTab}
+  onLogoutSuccess={() => {
+    setHasSession(false);
+    setCurrentScreen('onboarding');
+  }}
+  onCategoryPress={(categoryName) => {
+    setSelectedCategory(`Kreasi ${categoryName}`);
+    setCurrentScreen('categoryDetail');
+  }}
+  onSelectProject={(projectItem) => {
+    setSelectedProject(projectItem);
+    setCurrentScreen('detailGuide');
+  }}
+/>
       ) : currentScreen === 'categoryDetail' ? (
-        <CategoryDetailScreen 
+        <CategoryDetailScreen
           title={selectedCategory}
-          onBack={() => setCurrentScreen('main')}
-          onOpenGuide={() => setCurrentScreen('detailGuide')} // <-- 3. Pindah ke halaman DetailGuideScreen saat diklik
+          onBack={() => {
+            setMainInitialTab('home');
+            setCurrentScreen('main');
+          }}
+          onOpenGuide={(item) => {
+            setSelectedProject(item);
+            setCurrentScreen('detailGuide');
+          }}
           onNavigate={(tab) => {
-            if (tab === 'home') setCurrentScreen('main');
+            if (tab === 'home' || tab === 'search') {
+              setMainInitialTab(tab);
+              setCurrentScreen('main');
+            } else if (tab === 'creations') {
+              goToMyCreations();
+            }
           }}
         />
       ) : currentScreen === 'detailGuide' ? (
-        <DetailGuideScreen 
-          onBack={() => setCurrentScreen('categoryDetail')} // <-- 4. Tombol kembali ke kategori
-          onStart={() => {
-            console.log("Mulai membuat panduan diklik");
+        <DetailGuideScreen
+          project={selectedProject}
+          onBack={() => setCurrentScreen('categoryDetail')}
+          onStart={() => setCurrentScreen('tutorial')}
+        />
+      ) : currentScreen === 'tutorial' ? (
+        <TutorialScreen
+          project={selectedProject}
+          onBack={() => setCurrentScreen('detailGuide')}
+          onFinish={() => setCurrentScreen('projectComplete')}
+        />
+      ) : currentScreen === 'projectComplete' ? (
+        <ProjectCompleteScreen
+          project={selectedProject}
+          onBack={() => setCurrentScreen('tutorial')}
+          onViewProjects={goToMyCreations}
+          onHome={() => {
+            setMainInitialTab('home');
+            setCurrentScreen('main');
           }}
         />
       ) : (
-        <OnboardingScreen 
-          onPressStart={() => setCurrentScreen('register')} 
-          onPressLogin={() => setCurrentScreen('login')} 
+        <OnboardingScreen
+          onPressStart={() => setCurrentScreen('register')}
+          onPressLogin={() => setCurrentScreen('login')}
         />
       )}
     </SafeAreaProvider>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   SafeAreaView,
@@ -10,14 +10,15 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { guide, guideThumbnail, loadFavorites, saveFavorites, searchResults } from '../data/guides';
+import { loadUserFavorites, saveUserFavorites } from '../services/favoritesService';
+import { CategoryProjectItem, PROJECTS_BY_CATEGORY } from '../data/categoriesData';
 
 type Tab = 'home' | 'search' | 'creations' | 'showcase';
 
 type Props = {
   title: string;
   onBack: () => void;
-  onOpenGuide: () => void;
+  onOpenGuide: (project: CategoryProjectItem) => void;
   onNavigate: (tab: Tab) => void;
 };
 
@@ -29,6 +30,11 @@ const NAV_ITEMS = [
   { id: 'creations' as Tab, label: 'Kreasi Saya', icon: 'images-outline' as keyof typeof Ionicons.glyphMap, iconActive: 'images' as keyof typeof Ionicons.glyphMap },
 ];
 
+const parseMinutes = (durationText: string): number => {
+  const match = durationText.match(/\d+/);
+  return match ? parseInt(match[0], 10) : 999;
+};
+
 export default function CategoryDetailScreen({ title, onBack, onOpenGuide, onNavigate }: Props) {
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('Semua');
@@ -36,16 +42,42 @@ export default function CategoryDetailScreen({ title, onBack, onOpenGuide, onNav
   const [activeTab, setActiveTab] = useState<Tab>('search');
 
   useEffect(() => {
-    loadFavorites().then(setFavs);
+    loadUserFavorites().then(setFavs);
   }, []);
 
   const toggleFav = (id: string) => {
-    const next = favs.includes(id) ? favs.filter((f) => f !== id) : [...favs, id];
-    setFavs(next);
-    saveFavorites(next);
+    setFavs((prev) => {
+      const next = prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id];
+      saveUserFavorites(next);
+      return next;
+    });
   };
 
-  const showList = query.trim() === '' || guide.title.toLowerCase().includes(query.trim().toLowerCase());
+  const categoryItems: CategoryProjectItem[] = useMemo(() => {
+    const cleanKey = title.replace(/^Kreasi\s+/i, '').trim();
+    return PROJECTS_BY_CATEGORY[cleanKey] ?? PROJECTS_BY_CATEGORY['Kardus'];
+  }, [title]);
+
+  const filteredItems = useMemo(() => {
+    return categoryItems.filter((item) => {
+      const matchQuery =
+        query.trim() === '' ||
+        item.title.toLowerCase().includes(query.trim().toLowerCase());
+
+      if (!matchQuery) return false;
+
+      if (activeFilter === '< 15 Menit') {
+        return parseMinutes(item.duration) < 15;
+      }
+      if (activeFilter === 'Mudah') {
+        return item.difficulty === 'Mudah';
+      }
+      if (activeFilter === 'Dekorasi') {
+        return Boolean(item.isDecoration);
+      }
+      return true;
+    });
+  }, [categoryItems, query, activeFilter]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -87,30 +119,36 @@ export default function CategoryDetailScreen({ title, onBack, onOpenGuide, onNav
 
         {/* LIST */}
         <View style={styles.listContainer}>
-          {showList ? (
-            searchResults.map((item) => (
-              <TouchableOpacity 
-                key={item.id} 
-                style={styles.inspirationCard} 
-                activeOpacity={0.85} 
-                onPress={onOpenGuide}
+          {filteredItems.length > 0 ? (
+            filteredItems.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.inspirationCard}
+                activeOpacity={0.85}
+                onPress={() => onOpenGuide(item)}
               >
                 <View style={styles.inspirationImageWrap}>
-                  <Image source={guideThumbnail} style={styles.inspirationImage} resizeMode="cover" />
-                  <TouchableOpacity style={styles.heartButton} onPress={() => toggleFav(item.id)}>
+                  <Image source={item.image} style={styles.inspirationImage} resizeMode="cover" />
+                  <TouchableOpacity
+                    style={styles.heartButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      toggleFav(item.id);
+                    }}
+                  >
                     <Text style={styles.heart}>{favs.includes(item.id) ? '♥' : '♡'}</Text>
                   </TouchableOpacity>
                 </View>
-                
-                <Text style={styles.inspirationTitle} numberOfLines={2}>{guide.title}</Text>
-                
+
+                <Text style={styles.inspirationTitle} numberOfLines={2}>{item.title}</Text>
+
                 <View style={styles.ratingRow}>
                   <Text style={styles.stars}>★★★★☆</Text>
-                  <Text style={styles.ratingText}>{guide.rating} {guide.reviews}</Text>
+                  <Text style={styles.ratingText}>{item.rating} {item.reviews}</Text>
                 </View>
 
                 <View style={styles.metaRow}>
-                  <Text style={styles.cardMeta}>⏰ {guide.duration}</Text>
+                  <Text style={styles.cardMeta}>⏰ {item.duration}</Text>
                 </View>
 
                 <View style={styles.detailButton}>

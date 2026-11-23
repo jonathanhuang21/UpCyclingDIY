@@ -1,18 +1,20 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../services/supabase'; // Pastikan path import supabase sudah benar
+import { supabase } from '../services/supabase';
+import { getUserCreations, UserCreation } from '../services/creationsService';
 
 interface ProfileScreenProps {
   onBack?: () => void;
-  onLogoutSuccess?: () => void; // 1. Tambahkan prop onLogoutSuccess di sini
+  onLogoutSuccess?: () => void;
 }
 
 const MENU_ITEMS = [
@@ -24,23 +26,110 @@ const MENU_ITEMS = [
   { icon: 'information-circle-outline', label: 'Tentang Aplikasi', color: '#8B5CF6' },
 ];
 
+const resolveUserName = (user: any): string => {
+  return (
+    user?.user_metadata?.display_name ||
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    user?.user_metadata?.username ||
+    user?.email?.split('@')[0] ||
+    'Kreator'
+  );
+};
+
+const resolveUserHandle = (user: any, displayName: string): string => {
+  const rawHandle =
+    user?.user_metadata?.username ||
+    user?.user_metadata?.handle ||
+    user?.email?.split('@')[0] ||
+    displayName;
+
+  const cleanHandle = String(rawHandle)
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, '')
+    .replace(/\s+/g, '_');
+
+  return `@${cleanHandle || 'kreator'}`;
+};
+
 export default function ProfileScreen({ onBack, onLogoutSuccess }: ProfileScreenProps) {
-  
-  // 2. Buat fungsi untuk menangani proses Keluar (Logout)
+  const [userName, setUserName] = useState<string>('Kreator');
+  const [userHandle, setUserHandle] = useState<string>('@kreator');
+  const [creations, setCreations] = useState<UserCreation[]>([]);
+  const [loadingCreations, setLoadingCreations] = useState<boolean>(true);
+
+  const loadCreations = async () => {
+    setLoadingCreations(true);
+    const { data, error } = await getUserCreations();
+    if (!error) {
+      setCreations(data);
+    }
+    setLoadingCreations(false);
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const applyUserData = (user: any) => {
+      if (!isMounted) return;
+      if (user) {
+        const name = resolveUserName(user);
+        setUserName(name);
+        setUserHandle(resolveUserHandle(user, name));
+      } else {
+        setUserName('Kreator');
+        setUserHandle('@kreator');
+      }
+    };
+
+    const loadCurrentUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      applyUserData(user);
+      if (isMounted) {
+        await loadCreations();
+      }
+    };
+
+    loadCurrentUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      applyUserData(session?.user ?? null);
+      if (isMounted) {
+        loadCreations();
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const totalCreations = creations.length;
+  const totalExp = creations.reduce((sum, item) => sum + (item.exp_earned || 0), 0);
+  const currentLevel = Math.max(1, Math.floor(totalExp / 100) + 1);
+  const nextLevelExp = currentLevel * 100;
+  const expInCurrentLevel = totalExp % 100;
+  const progressPercent = Math.min(100, Math.round((expInCurrentLevel / 100) * 100));
+
   const handleLogout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error("Gagal melakukan logout:", error.message);
+        console.error('Gagal melakukan logout:', error.message);
         return;
       }
-      
-      // Jika berhasil sign out, jalankan callback onLogoutSuccess untuk kembali ke onboarding
+
       if (onLogoutSuccess) {
         onLogoutSuccess();
       }
     } catch (err) {
-      console.error("Terjadi kesalahan saat logout:", err);
+      console.error('Terjadi kesalahan saat logout:', err);
     }
   };
 
@@ -66,23 +155,27 @@ export default function ProfileScreen({ onBack, onLogoutSuccess }: ProfileScreen
               <Ionicons name="camera" size={14} color="#FFF" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.userName}>Budi Santoso</Text>
-          <Text style={styles.userHandle}>@budi_kreasi</Text>
+          <Text style={styles.userName} numberOfLines={1}>
+            {userName}
+          </Text>
+          <Text style={styles.userHandle} numberOfLines={1}>
+            {userHandle}
+          </Text>
 
           {/* Stats row */}
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>100</Text>
+              <Text style={styles.statValue}>{totalExp}</Text>
               <Text style={styles.statLabel}>XP</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>12</Text>
+              <Text style={styles.statValue}>{totalCreations}</Text>
               <Text style={styles.statLabel}>Kreasi</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>5</Text>
+              <Text style={styles.statValue}>{totalCreations}</Text>
               <Text style={styles.statLabel}>Badge</Text>
             </View>
           </View>
@@ -95,12 +188,52 @@ export default function ProfileScreen({ onBack, onLogoutSuccess }: ProfileScreen
               <Ionicons name="star" size={16} color="#FFB800" />
               <Text style={styles.xpTitle}>Progress XP</Text>
             </View>
-            <Text style={styles.xpLevel}>Level 2</Text>
+            <Text style={styles.xpLevel}>Level {currentLevel}</Text>
           </View>
           <View style={styles.progressBar}>
-            <View style={styles.progressFill} />
+            <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
           </View>
-          <Text style={styles.xpCaption}>100 / 200 XP menuju Level 3</Text>
+          <Text style={styles.xpCaption}>
+            {totalExp} / {nextLevelExp} XP menuju Level {currentLevel + 1}
+          </Text>
+        </View>
+
+        {/* Saved Creations from Supabase */}
+        <View style={styles.creationsCard}>
+          <View style={styles.creationsHeader}>
+            <Text style={styles.creationsTitle}>Kreasi Tersimpan</Text>
+            <Text style={styles.creationsCount}>{totalCreations} proyek</Text>
+          </View>
+
+          {loadingCreations ? (
+            <ActivityIndicator size="small" color="#2D7A3A" style={{ paddingVertical: 12 }} />
+          ) : creations.length === 0 ? (
+            <Text style={styles.emptyCreationsText}>
+              Belum ada kreasi yang tersimpan untuk akun ini.
+            </Text>
+          ) : (
+            creations.map((item, idx) => (
+              <View
+                key={item.id}
+                style={[
+                  styles.creationRow,
+                  idx < creations.length - 1 && styles.creationRowBorder,
+                ]}
+              >
+                <View style={styles.creationBadge}>
+                  <Ionicons name="checkmark-circle" size={18} color="#2D7A3A" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.creationName} numberOfLines={1}>
+                    {item.project_title}
+                  </Text>
+                  <Text style={styles.creationSub}>
+                    {item.category_name ? `${item.category_name} • ` : ''}+{item.exp_earned} XP
+                  </Text>
+                </View>
+              </View>
+            ))
+          )}
         </View>
 
         {/* Menu List */}
@@ -123,9 +256,9 @@ export default function ProfileScreen({ onBack, onLogoutSuccess }: ProfileScreen
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity 
-          style={styles.logoutButton} 
-          onPress={handleLogout} // 3. Hubungkan ke fungsi handleLogout
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
           activeOpacity={0.8}
         >
           <Ionicons name="log-out-outline" size={20} color="#EF4444" />
@@ -147,7 +280,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginTop: 45, // <-- Tambahkan baris ini untuk menurunkan posisi header dari atas
+    marginTop: 45,
   },
   backButton: {
     width: 40,
@@ -161,7 +294,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.07,
     shadowRadius: 6,
     elevation: 2,
-    
   },
   topBarTitle: {
     fontSize: 18,
@@ -299,7 +431,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   progressFill: {
-    width: '50%',
     height: '100%',
     backgroundColor: '#2D7A3A',
     borderRadius: 4,
@@ -307,6 +438,66 @@ const styles = StyleSheet.create({
   xpCaption: {
     fontSize: 12,
     color: '#7A9A7A',
+  },
+  creationsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  creationsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  creationsTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1A3C1A',
+  },
+  creationsCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2D7A3A',
+  },
+  emptyCreationsText: {
+    fontSize: 13,
+    color: '#7A9A7A',
+    paddingVertical: 6,
+  },
+  creationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 10,
+  },
+  creationRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F4F2',
+  },
+  creationBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E8F5E8',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  creationName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A3C1A',
+  },
+  creationSub: {
+    fontSize: 12,
+    color: '#5A7A5A',
+    marginTop: 2,
   },
   menuCard: {
     backgroundColor: '#FFFFFF',

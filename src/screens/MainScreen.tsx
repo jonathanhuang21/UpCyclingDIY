@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Platform,
   SafeAreaView,
@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { CategoryProjectItem } from '../data/categoriesData';
 
 import HomeScreen from './HomeScreen';
 import SearchScreen from './SearchScreen';
@@ -27,6 +28,8 @@ interface NavItemConfig {
 interface MainScreenProps {
   onLogoutSuccess?: () => void;
   onCategoryPress?: (categoryName: string) => void;
+  onSelectProject?: (project: CategoryProjectItem) => void;
+  initialTab?: TabType;
 }
 
 const NAV_ITEMS: NavItemConfig[] = [
@@ -35,16 +38,26 @@ const NAV_ITEMS: NavItemConfig[] = [
   { id: 'creations', label: 'Kreasi Saya', icon: 'images-outline', iconActive: 'images' },
 ];
 
-export default function MainScreen({ onLogoutSuccess, onCategoryPress }: MainScreenProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('home');
+export default function MainScreen({
+  onLogoutSuccess,
+  onCategoryPress,
+  onSelectProject,
+  initialTab = 'home',
+}: MainScreenProps) {
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [showProfile, setShowProfile] = useState(false);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+    setShowProfile(false);
+  }, [initialTab]);
 
   const renderContent = () => {
     if (showProfile) {
       return (
-        <ProfileScreen 
-          onBack={() => setShowProfile(false)} 
-          onLogoutSuccess={onLogoutSuccess} 
+        <ProfileScreen
+          onBack={() => setShowProfile(false)}
+          onLogoutSuccess={onLogoutSuccess}
         />
       );
     }
@@ -53,13 +66,16 @@ export default function MainScreen({ onLogoutSuccess, onCategoryPress }: MainScr
         return (
           <HomeScreen
             onProfilePress={() => setShowProfile(true)}
-            onCategoryPress={onCategoryPress} // <-- Teruskan onCategoryPress ke HomeScreen di sini
+            onLogoutSuccess={onLogoutSuccess}
+            onCategoryPress={onCategoryPress}
+            onSelectProject={onSelectProject}
+            onSeeAllPress={() => setActiveTab('search')}
           />
         );
       case 'search':
-        return <SearchScreen />;
+        return <SearchScreen onSelectProject={onSelectProject} />;
       case 'creations':
-        return <MyCreationsScreen />;
+        return <MyCreationsScreen onCreateNew={() => setActiveTab('home')} />;
       case 'showcase':
         return <ShowcaseScreen />;
       default:
