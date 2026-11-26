@@ -44,17 +44,18 @@ export default function App() {
     let isMounted = true;
 
     supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
-      if (isMounted) {
-        if (session) {
-          setHasSession(true);
-          setCurrentScreen('main');
-        }
-        setInitializing(false);
+      if (!isMounted) return;
+      if (session) {
+        setHasSession(true);
+        setCurrentScreen('main');
       }
+      setInitializing(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
-      console.log("EVENT AUTH BERUBAH:", event);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event: string, session: any) => {
+      console.log('EVENT AUTH BERUBAH:', event);
 
       if (!isMounted) return;
 
@@ -62,7 +63,7 @@ export default function App() {
         setHasSession(true);
         setCurrentScreen('main');
       } else if (event === 'SIGNED_OUT' || !session) {
-        console.log("Sesi berakhir / Logout, kembali ke onboarding...");
+        console.log('Sesi berakhir / Logout...');
         setHasSession(false);
         setCurrentScreen('onboarding');
       }
@@ -88,11 +89,7 @@ export default function App() {
         <SplashScreen
           onFinish={() => {
             setShowSplash(false);
-            if (hasSession) {
-              setCurrentScreen('main');
-            } else {
-              setCurrentScreen('onboarding');
-            }
+            setCurrentScreen(hasSession ? 'main' : 'onboarding');
           }}
         />
       ) : currentScreen === 'onboarding' ? (
@@ -117,20 +114,20 @@ export default function App() {
         />
       ) : currentScreen === 'main' ? (
         <MainScreen
-  initialTab={mainInitialTab}
-  onLogoutSuccess={() => {
-    setHasSession(false);
-    setCurrentScreen('onboarding');
-  }}
-  onCategoryPress={(categoryName) => {
-    setSelectedCategory(`Kreasi ${categoryName}`);
-    setCurrentScreen('categoryDetail');
-  }}
-  onSelectProject={(projectItem) => {
-    setSelectedProject(projectItem);
-    setCurrentScreen('detailGuide');
-  }}
-/>
+          initialTab={mainInitialTab}
+          onLogoutSuccess={() => {
+            setHasSession(false);
+            setCurrentScreen('onboarding');
+          }}
+          onCategoryPress={(categoryName) => {
+            setSelectedCategory(`Kreasi ${categoryName}`);
+            setCurrentScreen('categoryDetail');
+          }}
+          onSelectProject={(projectItem) => {
+            setSelectedProject(projectItem);
+            setCurrentScreen('detailGuide');
+          }}
+        />
       ) : currentScreen === 'categoryDetail' ? (
         <CategoryDetailScreen
           title={selectedCategory}

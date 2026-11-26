@@ -1,16 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Modal,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../services/supabase';
 import { getUserCreations, UserCreation } from '../services/creationsService';
+import { loadUserFavorites, saveUserFavorites } from '../services/favoritesService';
+import { calculateExpSummary } from '../services/expService';
 
 interface ProfileScreenProps {
   onBack?: () => void;
@@ -19,6 +24,7 @@ interface ProfileScreenProps {
 
 const MENU_ITEMS = [
   { icon: 'person-outline', label: 'Edit Profil', color: '#2D7A3A' },
+  { icon: 'key-outline', label: 'Ubah Kata Sandi', color: '#1B5E20' },
   { icon: 'trophy-outline', label: 'Pencapaian Saya', color: '#F59E0B' },
   { icon: 'heart-outline', label: 'Favorit Saya', color: '#EF4444' },
   { icon: 'settings-outline', label: 'Pengaturan', color: '#6B7280' },
@@ -59,6 +65,16 @@ export default function ProfileScreen({ onBack, onLogoutSuccess }: ProfileScreen
   const [creations, setCreations] = useState<UserCreation[]>([]);
   const [loadingCreations, setLoadingCreations] = useState<boolean>(true);
 
+  // State untuk modal ubah kata sandi
+  const [passwordModalVisible, setPasswordModalVisible] = useState<boolean>(false);
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [updatingPassword, setUpdatingPassword] = useState<boolean>(false);
+
+  // State untuk modal favorit
+  const [favoritesModalVisible, setFavoritesModalVisible] = useState<boolean>(false);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+
   const loadCreations = async () => {
     setLoadingCreations(true);
     const { data, error } = await getUserCreations();
@@ -66,6 +82,11 @@ export default function ProfileScreen({ onBack, onLogoutSuccess }: ProfileScreen
       setCreations(data);
     }
     setLoadingCreations(false);
+  };
+
+  const loadFavoritesList = async () => {
+    const ids = await loadUserFavorites();
+    setFavoriteIds(ids);
   };
 
   useEffect(() => {
@@ -90,6 +111,7 @@ export default function ProfileScreen({ onBack, onLogoutSuccess }: ProfileScreen
       applyUserData(user);
       if (isMounted) {
         await loadCreations();
+        await loadFavoritesList();
       }
     };
 
@@ -101,6 +123,7 @@ export default function ProfileScreen({ onBack, onLogoutSuccess }: ProfileScreen
       applyUserData(session?.user ?? null);
       if (isMounted) {
         loadCreations();
+        loadFavoritesList();
       }
     });
 
@@ -110,12 +133,79 @@ export default function ProfileScreen({ onBack, onLogoutSuccess }: ProfileScreen
     };
   }, []);
 
-  const totalCreations = creations.length;
-  const totalExp = creations.reduce((sum, item) => sum + (item.exp_earned || 0), 0);
-  const currentLevel = Math.max(1, Math.floor(totalExp / 100) + 1);
-  const nextLevelExp = currentLevel * 100;
-  const expInCurrentLevel = totalExp % 100;
-  const progressPercent = Math.min(100, Math.round((expInCurrentLevel / 100) * 100));
+  const {
+    totalCreations,
+    totalExp,
+    currentLevel,
+    levelTitle,
+    nextLevelExp,
+    progressPercent,
+  } = calculateExpSummary(creations);
+
+  const openPasswordModal = () => {
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordModalVisible(true);
+  };
+
+  const closePasswordModal = () => {
+    if (updatingPassword) return;
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordModalVisible(false);
+  };
+
+  const handleUpdatePassword = async () => {
+    if (newPassword.length < 6) {
+      Alert.alert('Peringatan', 'Kata sandi baru minimal 6 karakter!');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Peringatan', 'Konfirmasi kata sandi tidak sama!');
+      return;
+    }
+
+    setUpdatingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        Alert.alert('Gagal Mengubah Sandi', error.message);
+        return;
+      }
+
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordModalVisible(false);
+      Alert.alert('Berhasil', 'Kata sandi Anda telah diperbarui.');
+    } catch (err: any) {
+      Alert.alert('Terjadi Kesalahan', err?.message || 'Gagal memperbarui kata sandi.');
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
+  const handleOpenFavorites = async () => {
+    await loadFavoritesList();
+    setFavoritesModalVisible(true);
+  };
+
+  const handleRemoveFavoriteId = async (targetId: string) => {
+    const updated = favoriteIds.filter((id) => id !== targetId);
+    setFavoriteIds(updated);
+    await saveUserFavorites(updated);
+  };
+
+  const handleMenuPress = (label: string) => {
+    if (label === 'Ubah Kata Sandi') {
+      openPasswordModal();
+    } else if (label === 'Favorit Saya') {
+      handleOpenFavorites();
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -188,7 +278,9 @@ export default function ProfileScreen({ onBack, onLogoutSuccess }: ProfileScreen
               <Ionicons name="star" size={16} color="#FFB800" />
               <Text style={styles.xpTitle}>Progress XP</Text>
             </View>
-            <Text style={styles.xpLevel}>Level {currentLevel}</Text>
+            <Text style={styles.xpLevel}>
+              Level {currentLevel} • {levelTitle}
+            </Text>
           </View>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
@@ -245,11 +337,18 @@ export default function ProfileScreen({ onBack, onLogoutSuccess }: ProfileScreen
                 styles.menuItem,
                 index < MENU_ITEMS.length - 1 && styles.menuItemBorder,
               ]}
+              onPress={() => handleMenuPress(item.label)}
+              activeOpacity={0.75}
             >
               <View style={[styles.menuIconContainer, { backgroundColor: item.color + '20' }]}>
                 <Ionicons name={item.icon as any} size={20} color={item.color} />
               </View>
               <Text style={styles.menuLabel}>{item.label}</Text>
+              {item.label === 'Favorit Saya' && favoriteIds.length > 0 && (
+                <View style={styles.favCountBadge}>
+                  <Text style={styles.favCountText}>{favoriteIds.length}</Text>
+                </View>
+              )}
               <Ionicons name="chevron-forward" size={18} color="#CCC" />
             </TouchableOpacity>
           ))}
@@ -265,6 +364,137 @@ export default function ProfileScreen({ onBack, onLogoutSuccess }: ProfileScreen
           <Text style={styles.logoutText}>Keluar</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Modal Ubah Kata Sandi */}
+      <Modal
+        visible={passwordModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closePasswordModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Ubah Kata Sandi</Text>
+            <Text style={styles.modalSubtitle}>
+              Masukkan kata sandi baru untuk akun yang sedang aktif.
+            </Text>
+
+            <View style={styles.modalInputGroup}>
+              <Text style={styles.modalLabel}>Kata Sandi Baru</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Minimal 6 karakter"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry
+                value={newPassword}
+                onChangeText={setNewPassword}
+              />
+            </View>
+
+            <View style={styles.modalInputGroup}>
+              <Text style={styles.modalLabel}>Konfirmasi Kata Sandi Baru</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Ulangi kata sandi baru"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
+            </View>
+
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, updatingPassword && styles.disabledBtn]}
+                onPress={closePasswordModal}
+                disabled={updatingPassword}
+              >
+                <Text style={styles.modalCancelText}>Batal</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalSaveBtn, updatingPassword && styles.disabledBtn]}
+                onPress={handleUpdatePassword}
+                disabled={updatingPassword}
+              >
+                {updatingPassword ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <Text style={styles.modalSaveText}>Simpan</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Favorit Saya */}
+      <Modal
+        visible={favoritesModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFavoritesModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Favorit Saya</Text>
+            <Text style={styles.modalSubtitle}>
+              {favoriteIds.length} item tersimpan di favorit akun ini.
+            </Text>
+
+            {favoriteIds.length === 0 ? (
+              <Text style={styles.emptyCreationsText}>
+                Belum ada favorit tersimpan.
+              </Text>
+            ) : (
+              <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
+                {favoriteIds.map((favId, idx) => {
+                  const matchedCreation = creations.find(
+                    (c) => String(c.id) === favId || c.project_title === favId
+                  );
+                  const displayTitle = matchedCreation?.project_title || favId;
+                  const displaySub = matchedCreation?.category_name
+                    ? `${matchedCreation.category_name} • +${matchedCreation.exp_earned} XP`
+                    : 'Item Favorit';
+
+                  return (
+                    <View
+                      key={favId}
+                      style={[
+                        styles.creationRow,
+                        idx < favoriteIds.length - 1 && styles.creationRowBorder,
+                      ]}
+                    >
+                      <View style={styles.favBadge}>
+                        <Ionicons name="heart" size={16} color="#EF4444" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.creationName} numberOfLines={1}>
+                          {displayTitle}
+                        </Text>
+                        <Text style={styles.creationSub}>{displaySub}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => handleRemoveFavoriteId(favId)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            )}
+
+            <TouchableOpacity
+              style={[styles.modalSaveBtn, { marginTop: 14 }]}
+              onPress={() => setFavoritesModalVisible(false)}
+            >
+              <Text style={styles.modalSaveText}>Tutup</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -489,6 +719,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  favBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   creationName: {
     fontSize: 14,
     fontWeight: '700',
@@ -534,6 +772,18 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
+  favCountBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginRight: 8,
+  },
+  favCountText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -553,5 +803,82 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#EF4444',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 22,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E5EFE3',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1A3C1A',
+    marginBottom: 6,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  modalInputGroup: {
+    marginBottom: 14,
+  },
+  modalLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 6,
+  },
+  modalInput: {
+    backgroundColor: '#F3F9F1',
+    borderWidth: 1,
+    borderColor: '#D1E2CD',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 14,
+    color: '#111827',
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  modalSaveBtn: {
+    flex: 1,
+    backgroundColor: '#2D7A3A',
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  modalSaveText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  disabledBtn: {
+    opacity: 0.7,
   },
 });

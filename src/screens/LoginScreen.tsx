@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -7,53 +9,54 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Alert
 } from 'react-native';
 import { supabase } from '../services/supabase';
 
 interface LoginScreenProps {
   onPressRegister?: () => void;
   onPressBack?: () => void;
-  onLoginSuccess?: () => void; 
+  onLoginSuccess?: () => void;
+  onPressForgotPassword?: () => void;
 }
 
 const GREEN = '#1B5E20';
 const LIGHT_GREEN = '#2E7D32';
 const BG_COLOR = '#F3F9F1';
 
-export default function LoginScreen({ onPressRegister, onPressBack, onLoginSuccess }: LoginScreenProps) {
+export default function LoginScreen({
+  onPressRegister,
+  onPressBack,
+  onLoginSuccess,
+  onPressForgotPassword,
+}: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Peringatan", "Email dan password harus diisi!");
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
+      Alert.alert('Peringatan', 'Email dan kata sandi harus diisi!');
       return;
     }
 
     setLoading(true);
 
     try {
-      // Verifikasi kredensial langsung ke Supabase Auth
       const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password,
+        email: trimmedEmail,
+        password,
       });
 
       if (error) {
-        Alert.alert("Gagal Masuk", error.message);
-        setLoading(false);
+        Alert.alert('Gagal Masuk', error.message);
         return;
       }
 
-      // Jika berhasil diverifikasi oleh Supabase, panggil onLoginSuccess
-      if (onLoginSuccess) {
-        onLoginSuccess();
-      }
+      onLoginSuccess?.();
     } catch (err: any) {
-      Alert.alert("Terjadi Kesalahan", err.message || "Gagal melakukan login.");
+      Alert.alert('Terjadi Kesalahan', err?.message || 'Gagal melakukan login.');
     } finally {
       setLoading(false);
     }
@@ -62,7 +65,12 @@ export default function LoginScreen({ onPressRegister, onPressBack, onLoginSucce
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+        {onPressBack && (
+          <TouchableOpacity style={styles.backBtn} onPress={onPressBack} disabled={loading}>
+            <Text style={styles.backText}>← Kembali</Text>
+          </TouchableOpacity>
+        )}
+
         <View style={styles.headerContainer}>
           <View style={styles.logoCircle}>
             <Text style={styles.logoEmoji}>♻️</Text>
@@ -75,13 +83,14 @@ export default function LoginScreen({ onPressRegister, onPressBack, onLoginSucce
 
         <View style={styles.formContainer}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email / Nomor Ponsel</Text>
+            <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}
               placeholder="cth: budi@email.com"
               placeholderTextColor="#A0A0A0"
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
               value={email}
               onChangeText={setEmail}
             />
@@ -98,29 +107,42 @@ export default function LoginScreen({ onPressRegister, onPressBack, onLoginSucce
                 value={password}
                 onChangeText={setPassword}
               />
-              <TouchableOpacity onPress={() => setSecureText(!secureText)}>
+              <TouchableOpacity
+                onPress={() => setSecureText((prev) => !prev)}
+                disabled={loading}
+              >
                 <Text style={styles.showHideText}>{secureText ? '👁️' : '🙈'}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          <TouchableOpacity style={styles.forgotContainer}>
+          <TouchableOpacity
+            style={styles.forgotContainer}
+            onPress={onPressForgotPassword}
+            disabled={loading}
+          >
             <Text style={styles.forgotText}>Lupa Kata Sandi?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Masuk</Text>
+          <TouchableOpacity
+            style={[styles.loginButton, loading && styles.disabledBtn]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.loginButtonText}>Masuk</Text>
+            )}
           </TouchableOpacity>
         </View>
 
         <View style={styles.footerContainer}>
           <Text style={styles.footerText}>Belum punya akun? </Text>
-          {/* Hubungkan ke props onPressRegister */}
-          <TouchableOpacity onPress={onPressRegister}>
+          <TouchableOpacity onPress={onPressRegister} disabled={loading}>
             <Text style={styles.registerText}>Daftar Sekarang</Text>
           </TouchableOpacity>
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -129,17 +151,27 @@ export default function LoginScreen({ onPressRegister, onPressBack, onLoginSucce
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F9F1',
+    backgroundColor: BG_COLOR,
   },
   scrollContent: {
     padding: 24,
     justifyContent: 'center',
     flexGrow: 1,
   },
+  backBtn: {
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+    paddingVertical: 6,
+  },
+  backText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: GREEN,
+  },
   headerContainer: {
     alignItems: 'center',
     marginBottom: 30,
-    marginTop: 20,
+    marginTop: 12,
   },
   logoCircle: {
     width: 70,
@@ -223,11 +255,11 @@ const styles = StyleSheet.create({
   },
   forgotText: {
     fontSize: 12,
-    color: '#388E3C',
+    color: LIGHT_GREEN,
     fontWeight: '600',
   },
   loginButton: {
-    backgroundColor: '#1B5E20',
+    backgroundColor: GREEN,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -237,6 +269,9 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  disabledBtn: {
+    opacity: 0.7,
   },
   footerContainer: {
     flexDirection: 'row',
@@ -250,7 +285,7 @@ const styles = StyleSheet.create({
   },
   registerText: {
     fontSize: 13,
-    color: '#1B5E20',
+    color: GREEN,
     fontWeight: 'bold',
   },
 });

@@ -38,3 +38,22 @@ export async function saveUserFavorites(ids: string[]): Promise<void> {
     console.log('Gagal menyimpan favorit:', err);
   }
 }
+
+export async function toggleUserFavorite(itemId: string): Promise<{
+  isFavorite: boolean;
+  favorites: string[];
+}> {
+  const current = await loadUserFavorites();
+  const exists = current.includes(itemId);
+
+  const updated = exists
+    ? current.filter((id) => id !== itemId)
+    : [itemId, ...current];
+
+  await saveUserFavorites(updated);
+
+  return {
+    isFavorite: !exists,
+    favorites: updated,
+  };
+}
